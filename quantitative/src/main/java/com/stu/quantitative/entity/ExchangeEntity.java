@@ -7,31 +7,34 @@ import org.hibernate.annotations.SQLRestriction;
 
 @Getter
 @Entity
-@Table(name = "stock") // 表名称
+@Table(name = "exchange") // 表名称
 @SQLRestriction("deleted = false")
-public class StockEntity {
+public class ExchangeEntity {
     // ID
     @Id
     @Column
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
 
-    // 股票编号
+    // 枚举编号
     @Column
-    private String ticker;
-
-    // 股票名称
-    @Column
-    private String name;
+    private int code;
 
 
-    // 交易所编码：USD/CNY
+    // 数据来源
     @Column
-    private int exchange;
+    private int source;
 
-    // 基金管理费率（万分之）
+    // 枚举名称
     @Column
-    private int emr;
+    private String value;
+
+    // 货币编码
+    @Column
+    private int currency;
+
+
+
 
     // 备注
     @Column
