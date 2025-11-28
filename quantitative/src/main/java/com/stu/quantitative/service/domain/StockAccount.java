@@ -144,8 +144,12 @@ public class StockAccount {
         if (this.policy.getCash() < this.minAmount) {
             return;
         }
+        // 分享率：该参数的目的是为了控制买入仓位，防止初次买入过多
+        // 第一次购买的时候，分享率为0.45，后续每次购买分享率递增，无穷大时逼近渐近线1
         double shareRate = Math.pow(2 / Math.PI * Math.atan(++this.buyCount), 2);
-        double callAmount = Math.min(policy.getCash() * this.balanceAccount.getExpectedShareRate() * shareRate / 5, this.policy.getCash());
+        // 购买金额：当前现金*预期仓位*分享率/5，与当前现金取小
+        double callAmount = Math.max(policy.getCash() * this.balanceAccount.getExpectedShareRate() * shareRate / 5, this.minAmount);
+        // 交易数量：购买金额/交易价
         this.exchangeQuantity = callAmount / this.exchangePrice;
         // 1.从资金池中扣除买入金额
         this.policy.exchange(-1 * callAmount);

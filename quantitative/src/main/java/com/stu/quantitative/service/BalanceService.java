@@ -19,12 +19,19 @@ public class BalanceService {
     @Autowired
     private CodeConfigService codeConfigService;
 
-    public List<BalanceAccount>findAllByPlanCode(int planCode) {
-        Map<Integer, List<BalanceEntity>> balances =  this.balanceRepository.findAllByPlanCode(planCode).stream().collect(Collectors.groupingBy(BalanceEntity::getInvestCode));
-        return balances.keySet().stream().map(it->
-                new BalanceAccount(this.codeConfigService.findBySkuAndCode("investName",it).getValue(),
-                balances.get(it).getFirst().getShare(),
-                balances.get(it).stream().map(be->this.stockService.findById(be.getStockId())).toList()
+    public List<BalanceAccount> findAccountAllByPlanCode(int planCode) {
+        Map<Integer, List<BalanceEntity>> balances = this.balanceRepository.findAllByPlanCode(planCode).stream().collect(Collectors.groupingBy(BalanceEntity::getInvestCode));
+        return balances.keySet().stream().map(it ->
+                new BalanceAccount(this.codeConfigService.findBySkuAndCode("investName", it).getValue(),
+                        balances.get(it).getFirst().getShare(),
+                        balances.get(it).stream().map(be -> this.stockService.findById(be.getStockId())).toList()
                 )).toList();
     }
+
+    public List<BalanceEntity> findAllByPlanCode(int planCode) {
+        return this.balanceRepository.findAllByPlanCode(planCode);
+
+    }
+
+
 }

@@ -16,6 +16,6 @@ public class TraderController {
 
     @GetMapping("/back_track/{planCode}")
     public void backTrack(@PathVariable int planCode) {
-         this.traderService.backTrack(planCode);
+         this.traderService.execute(planCode);
     }
 }

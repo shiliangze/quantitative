@@ -25,7 +25,7 @@ public class StockEntity {
     private String name;
 
 
-    // 交易所编码：USD/CNY
+    // 交易所编码
     @Column
     private int exchange;
 
