@@ -26,6 +26,7 @@ public class StockPool {
     @Getter
     private final List<StockEntity> stocks;
     private final List<BalanceEntity> balances;
+    @Getter
     private final List<StockStore> stockStores;
     @Getter
     private final List<BalanceStore> balanceStores;
@@ -81,10 +82,10 @@ public class StockPool {
                 .findFirst().get().getAmount() >= this.minAmount;
     }
 
-    public StockStore getStockStore(int stockId) {
-        return this.stockStores.stream().filter(stockStore -> stockStore.getStockId() == stockId)
-                .findFirst().get();
-    }
+//    public StockStore getStockStore(int stockId) {
+//        return this.stockStores.stream().filter(stockStore -> stockStore.getStockId() == stockId)
+//                .findFirst().get();
+//    }
 
     public BalanceStore getBalanceStoreByStockId(int stockId) {
         int balanceId = this.stockStores.stream().filter(stockStore -> stockStore.getStockId() == stockId)

@@ -3,6 +3,7 @@ package com.stu.quantitative.service.domain;
 import com.stu.quantitative.entity.PriceEntity;
 import com.stu.quantitative.entity.StockEntity;
 import lombok.Data;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 
@@ -12,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 public class StockPolicy {
     //  预期仓位
     private final TechnicalAnalysis technicalAnalysis = new TechnicalAnalysis();
+    @Getter
     private final StockEntity stock;
     // 最小买入卖出数量3000元
     private final double minAmount = 3000.00;
