@@ -1,6 +1,5 @@
 package com.stu.quantitative.service.domain;
 
-import com.stu.quantitative.entity.StockEntity;
 import lombok.Data;
 
 import java.time.LocalDate;
@@ -12,8 +11,7 @@ public class BalancePolicy {
     // 仓位系数
     private final double coefficient;
     private final String investName;
-    private final List<StockEntity> stocks;
-    private final List<StockAccount> stockAccounts = null;
+    private final List<StockPolicy> stocks;
 
 
     private Policy policy;
@@ -25,60 +23,76 @@ public class BalancePolicy {
     // 仓位占比
     private double position = 0.00;
 
-    public BalancePolicy(String investName, double expectedShareRate, List<StockEntity> stocks){
+    public BalancePolicy(String investName, double expectedShareRate, List<StockPolicy> stocks) {
         this.expectedShareRate = expectedShareRate;
         this.coefficient = 1 - this.expectedShareRate * 2;
         this.investName = investName;
-        this.stocks =stocks;
-//        this.stockAccounts = stocks.stream().map(it->new StockAccount(this,it)).toList();
+        this.stocks = stocks;
+    }
+
+    public LocalDate getStartKLine() {
+        return this.stocks.stream().map(StockPolicy::getStartKLine).min(LocalDate::compareTo).orElse(null);
+    }
+
+    //所有股票至少有一笔交易的日期
+    public LocalDate getStartTradedEnd() {
+        return this.stocks.stream().map(StockPolicy::getStartTraded).max(LocalDate::compareTo).orElse(null);
+    }
+
+    // 所有股票都至少交易一次：所有股票首次交易日的最后一个
+    public LocalDate getEndKline() {
+        return this.stocks.stream().map(StockPolicy::getEndKline).max(LocalDate::compareTo).orElse(null);
     }
 
     // 残局交易
-    public void endGameExecute(TradeDateDto record){
-        this.currentDate = record.getDate();
+    public void endGameExecute(LocalDate date) {
+        this.currentDate = date;
         // 所有股票全都执行一遍execute
         // execute 返回交易方向，如果有两笔交易，正负抵消，则等价为无交易
-        int direction = this.stockAccounts.stream()
+        int direction = this.stocks.stream()
                 // 过滤已上市股票
-                .filter(it->it.tradeable(record))
+                // TODO 0.0
+                .filter(it -> it.tradeable(date))
                 // 执行交易
-                .mapToInt(it->it.endGameExecute(record)).sum();
+                // TODO 1.2 断点2.修改getEndgames 直接传入而非通过policy获取，顺便解决price输入的问题
+                .mapToInt(it -> it.endGameExecute(date)).sum();
         // 2. 执行盘后清算任务
         // 2.1 计算当天仓位总数
-        this.shareAmount = this.stockAccounts.stream().mapToDouble(StockAccount::getShareAmount).sum();
+        this.shareAmount = this.stocks.stream().mapToDouble(StockPolicy::getShareAmount).sum();
         // 2.2 计算仓位占比
         this.position = this.shareAmount / this.policy.totalAmount();
         // 2.3 对每个股票进行盘后清算
-        this.stockAccounts.forEach(it -> it.clearing(record,direction));
+        this.stocks.forEach(it -> it.clearing(record, direction));
     }
+
     // 回测交易
-    public void backTradeExechte(TradeDateDto record){
+    public void backTradeExechte(TradeDateDto record) {
         this.currentDate = record.getDate();
         // 1.执行盘中交易任务
         // 规则：主产品如果没上市，自动选择第二产品，直到主产品上市，随后开始替换副产品
         // 1.1 已上市，并有足够仓位的股票
-        int direction = this.stockAccounts.stream()
+        int direction = this.stocks.stream()
                 // 过滤未上市的股票
-                .filter(it->it.tradeable(record))
+                .filter(it -> it.tradeable(record))
                 // 过滤后的股票，选择第一优先的股票进行操作
                 //规则，买入，资金足够就买入第一优先级，卖出，依次判断是否仓位足够，卖出最高优先级后短路退出
-                .mapToInt(it->it.backTradeExechte(record))
+                .mapToInt(it -> it.backTradeExecute(record))
                 // 发生交易即短路退出，一天交易只操作一只股票
                 .filter(it -> it != 0).findFirst().orElse(0);
 
         // 1.2 判断该股票是否有足够仓位
         // 2. 执行盘后清算任务
         // 2.1 计算当天仓位总数
-        this.shareAmount = this.stockAccounts.stream().filter(it->it.tradeable(record))
+        this.shareAmount = this.stockAccounts.stream().filter(it -> it.tradeable(record))
                 .mapToDouble(StockAccount::getShareAmount).sum();
         // 2.2 计算仓位占比
         this.position = this.shareAmount / this.policy.totalAmount();
         // 2.3 对每个股票进行盘后清算
-        this.stockAccounts.stream().filter(it->it.tradeable(record))
-                .forEach(it -> it.clearing(record,direction));
+        this.stockAccounts.stream().filter(it -> it.tradeable(record))
+                .forEach(it -> it.clearing(record, direction));
     }
 
-    public void injectPolicy(Policy policy){
+    public void injectPolicy(Policy policy) {
         this.policy = policy;
         this.stockAccounts.forEach(it -> it.setPolicy(policy));
     }
@@ -95,8 +109,8 @@ public class BalancePolicy {
         this.callShare = 1 / this.putShare;
     }
 
-    public void addShareToLog(TradeDateDto record){
-        this.stockAccounts.stream().filter(it->it.tradeable(record))
-                .forEach(it->it.addShareToLog(record));
+    public void addShareToLog(TradeDateDto record) {
+        this.stockAccounts.stream().filter(it -> it.tradeable(record))
+                .forEach(it -> it.addShareToLog(record));
     }
 }

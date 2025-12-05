@@ -16,4 +16,8 @@ public class TradedService {
         return this.tradedRepository.findAllByOrderByDate();
     }
 
+    public List<TradedEntity> findAllByStockIdOrderByDate(int stockId) {
+        return this.tradedRepository.findAllByStockIdOrderByDate(stockId);
+    }
+
 }

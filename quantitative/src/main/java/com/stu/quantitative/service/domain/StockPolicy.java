@@ -2,9 +2,13 @@ package com.stu.quantitative.service.domain;
 
 import com.stu.quantitative.entity.PriceEntity;
 import com.stu.quantitative.entity.StockEntity;
+import com.stu.quantitative.entity.TradedEntity;
 import lombok.Data;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+
+import java.time.LocalDate;
+import java.util.List;
 
 
 //  单股交易对象
@@ -15,20 +19,34 @@ public class StockPolicy {
     private final TechnicalAnalysis technicalAnalysis = new TechnicalAnalysis();
     @Getter
     private final StockEntity stock;
+    private final BalanceStore balanceStore;
+    // klines和tradeds都是已排序的
+    private final List<PriceEntity> klines;
+    private final List<TradedEntity> tradeds;
     // 最小买入卖出数量3000元
     private final double minAmount = 3000.00;
 
-    // 投资品类：黄金，债券，宽基指数，加密货币，高分红
+    /**
+     * 以下为：周期为一天的变量
+     */
+    // 当前日期
+    private  LocalDate date;
+    // 当前日期的K线
+    private PriceEntity currentKLine;
+    // 当前日期的成交记录
+    private TradedEntity currentTraded;
+
+
+
+
 
     // policy对象，用于查询现金和市值，计算仓位
     private Policy policy;
     private TradeRecordDto tradeRecord;
     // 买卖向向，0：无交易，1：买，-1：卖
     private int direction = 0;
-    //   当天的K线数据
-    private PriceEntity kLine;
     private int buyCount = 0;
-    // 成交价
+    // 成交价（无成交时为-1）
     private double exchangePrice, exchangeQuantity = -1.00;
     // 初日波动率
     private double hv = 1.618;
@@ -47,8 +65,30 @@ public class StockPolicy {
     private double putRate = -1.00, callRate = -1.00;
 
 
-    public StockPolicy( StockEntity stock) {
+    public StockPolicy(StockEntity stock, BalanceStore balanceStore,
+                       List<PriceEntity> klines, List<TradedEntity> tradeds) {
         this.stock = stock;
+        this.balanceStore = balanceStore;
+        this.klines = klines;
+        this.tradeds = tradeds;
+    }
+
+    public LocalDate getStartKLine(){
+        return this.klines.getFirst().getDate();
+    }
+    public LocalDate getStartTraded(){
+        return this.tradeds.getFirst().getDate();
+    }
+    public LocalDate getEndKline(){
+        return this.klines.getLast().getDate();
+    }
+
+    // 返回该股票是否已上市
+    public boolean tradeable(LocalDate date) {
+        this.kLine = this.klines.stream().filter(it -> it.getDate().equals(date)).findFirst().orElse(null);
+        this.
+
+        return null != record.getPrices().get(this.stock.getTicker()).orElse(null);
     }
 
     /*
@@ -57,7 +97,7 @@ public class StockPolicy {
         2. 设置当前价格currentPrice，该价格用于运算预期价格
         3. 执行交易
      */
-    public int endGameExecute(PriceEntity price) {
+    public int endGameExecute(LocalDate date) {
         this.kLine = price;
         if (this.kLine == null) {
             log.warn("{} 没有K线数据", this.stock.getTicker());
@@ -66,15 +106,34 @@ public class StockPolicy {
         // 2.1 计算当前股票的历史波动率
         this.technicalAnalysis.add(this.kLine);
         this.hv = Math.sqrt(this.technicalAnalysis.hvol(250) * 100);
+        // 3. 执行交易
+        //  根据日期查找是否存在历史交易
+        // TODO 1.1 断点1.修改getEndgames 直接传入而非通过policy获取，顺便解决price输入的问题
+        this.policy.getEndgames().stream().filter(it ->
+                        it.getDate().equals(price.getDate()) && it.getStockId() == this.stock.getId()).findAny()
+                .ifPresent(endgame -> {
+                    // 设置交易价
+                    this.exchangePrice = endgame.getPrice();
+                    this.exchangeQuantity = endgame.getQuantity();
+                    // 执行量化判交易
+                    // 1.从资金池中扣除买入金额
+                    this.policy.exchange(-1 * endgame.getDirection() * this.exchangePrice * this.exchangeQuantity);
+                    // 2.增加响应持仓数量
+                    this.shareQuantity += endgame.getDirection() * this.exchangeQuantity;
+                    // 3.设置交易方向标志，供外部访问
+                    this.direction = endgame.getDirection();
+                });
+
         log.info("{} 历史波动率：{}", this.stock.getTicker(), this.hv);
         return 0;
     }
 
     /**
      * 回测执行交易
+     *
      * @return
      */
-    public int backTradeExechte(PriceEntity price) {
+    public int backTradeExecute(PriceEntity price) {
         this.kLine = price;
         if (this.kLine == null) {
             // 回测交易如果没有交易数据，可能是停牌等原因
@@ -89,4 +148,61 @@ public class StockPolicy {
         return 0;
     }
 
+    // 盘后清算
+    public void clearing(TradeDateDto record, int direction) {
+        if (this.kLine == null) {
+            return;
+        }
+        if (direction > 0) {
+            ++this.buyCount;
+        } else if (direction < 0) {
+            --this.buyCount;
+        }
+        if (0 == this.direction && 1 == Math.abs(direction)) {
+            // 如果当前股票无交易，且，平衡仓有交易，以收盘价作为交易价
+            this.exchangePrice = this.kLine.getClose();
+        }
+        // 2.4 计算趋势因子
+        this.trend();
+        // 2.5 计算当前平衡仓股票的仓位
+        this.balanceAccount.share();
+
+        // 2.6 计算阈值与目标价
+        this.threshold();
+        this.addTradeToLog(record);
+    }
+
+    // 计算趋势因子
+    private void trend() {
+//        this.direction = 0 或 2 全部跳过
+        if (1 == this.direction) {
+            // tradeFlag = 1 买入交易
+            // 买入步长增加卖出步长开平方
+            this.callTrend *= 1.618;
+            this.putTrend = Math.sqrt(this.putTrend);
+        } else if (-1 == this.direction) {
+            this.putTrend *= 1.618;
+            this.callTrend = Math.sqrt(this.callTrend);
+        }
+    }
+
+    // 计算阈值
+    private void threshold() {
+        // 4. 计算买入阈值
+        this.callRate = 1.00 - (this.hv + this.balanceAccount.getCallShare() + this.callTrend) / 100;
+        this.putRate = 1.00 + (this.hv + this.balanceAccount.getPutShare() + this.putTrend) / 100;
+        this.put = this.exchangePrice * putRate;
+        this.call = this.exchangePrice * callRate;
+    }
+
+    private void addTradeToLog(TradeDateDto record) {
+        if (this.direction == 0) {
+//            如果当天无真实交易，直接退出
+            return;
+        }
+        TradeRecordDto tradeRecordDto = new TradeRecordDto(this.stock.getName(), this.direction, this.exchangePrice, this.exchangeQuantity, this.hv, this.balanceAccount.getCallShare(), this.balanceAccount.getPutShare(), this.callTrend, this.putTrend, this.callRate, this.putRate);
+        record.addTrade(tradeRecordDto);
+        // 计算完毕后立即归位
+        this.direction = 0;
+    }
 }

@@ -4,8 +4,8 @@ import com.stu.quantitative.entity.BalanceEntity;
 import com.stu.quantitative.entity.StockEntity;
 import lombok.Getter;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -24,47 +24,44 @@ public class StockPool {
     private final double minAmount = 3000.00;
     // 股票持仓信息，key：股票id，value：持仓数量
     @Getter
-    private final List<StockEntity> stocks;
+    private final List<StockEntity> stockEntities;
     private final List<BalanceEntity> balances;
     @Getter
     private final List<StockStore> stockStores;
     @Getter
     private final List<BalanceStore> balanceStores;
 
-    public StockPool(List<StockEntity> stocks, List<BalanceEntity> balances) {
+    public StockPool(List<StockEntity> stockEntities, List<BalanceEntity> balances) {
         this.balances = balances;
-        this.balanceStores = this.balanceToInfo(balances);
-        //  筛选出planCode下的股票
-        this.stocks = stocks.stream()
-                .filter(it -> balances.stream()
-                        .anyMatch(b -> b.getStockId() == it.getId()))
-                .collect(Collectors.toList());
-
-        this.stockStores = this.stocks.stream().map(it -> {
-            BalanceEntity balance = balances.stream().filter(b -> b.getStockId() == it.getId()).findFirst().get();
-            return new StockStore(it.getId(), balance.getId());
-        }).collect(Collectors.toList());
+        this.stockEntities = stockEntities;
+        this.balanceStores = this.balanceToStore(balances, stockEntities);
+        this.stockStores = this.balanceStores.stream().flatMap(it -> it.getStocks().stream()).collect(Collectors.toList());
     }
 
-    private List<BalanceStore> balanceToInfo(List<BalanceEntity> balanceEntities) {
-        Set<Integer> investCodes = balanceEntities.stream().map(BalanceEntity::getInvestCode).collect(Collectors.toSet());
-        return investCodes.stream().map(it -> {
-            double share = balanceEntities.stream().filter(be -> be.getInvestCode() == it).findFirst().get().getShare();
-            return new BalanceStore(it, 1 - share * 2);
-        }).toList();
+    private List<BalanceStore> balanceToStore(
+            List<BalanceEntity> balanceEntities, List<StockEntity> stocks) {
+
+        List<BalanceStore> stores = new ArrayList<>();
+        for (BalanceEntity balanceEntity : balanceEntities) {
+            // 筛选出与balanceEntity对应的股票
+            StockEntity stockEntity = stocks.stream().filter(it -> it.getId() == balanceEntity.getStockId()).findFirst().get();
+            StockStore stockStore = new StockStore(stockEntity.getId(), balanceEntity.getId());
+            // 是否已经存在该investCode的BalanceStore
+            BalanceStore balanceStore = stores.stream().filter(it -> it.getInvestCode() == balanceEntity.getInvestCode()).findFirst().orElse(null);
+            if (null == balanceStore) {
+                balanceStore = new BalanceStore(balanceEntity.getInvestCode(), 1 - balanceEntity.getShare() * 2, this);
+                stores.add(balanceStore);
+            }
+            balanceStore.addStock(stockStore);
+        }
+        return stores;
     }
 
 
-    //  TODO
-
-
-
-    // 执行交易
-    // stockId：股票id，direction：交易方向，1：买，-1：卖，price：交易价格，quantity：交易数量
-    public void exchange(int stockId, int direction, double price, double quantity) {
-        this.cash -= direction * price * quantity;
-        this.stockStores.stream().filter(stockStore -> stockStore.getStockId() == stockId)
-                .findFirst().get().exchange(direction, quantity);
+    // 交易中调整现金
+    public void exchange(int direction, double delta) {
+        // -=因为金额买正卖负，现金操作相反
+        this.cash -= direction * delta;
     }
 
     // 实时计算总市值

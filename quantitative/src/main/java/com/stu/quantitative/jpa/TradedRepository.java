@@ -11,4 +11,5 @@ import java.util.List;
 @Repository
 public interface TradedRepository extends JpaRepository<TradedEntity, Integer>, JpaSpecificationExecutor<TradedEntity> {
     public List<TradedEntity> findAllByOrderByDate();
+    public List<TradedEntity> findAllByStockIdOrderByDate(int stockId);
 }
