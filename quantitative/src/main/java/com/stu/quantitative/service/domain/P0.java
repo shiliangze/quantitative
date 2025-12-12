@@ -11,9 +11,9 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Data
-public class Policy {
+public class P0 {
     //  初始化平衡仓
-    private final List<BalanceAccount> balanceAccounts;
+    private final List<B0> balanceAccounts;
     private final List<TradedEntity> endgames;
     // 最初交易日，最后交易日
     private final LocalDate startDate, middleDate, endDate;
@@ -21,9 +21,9 @@ public class Policy {
 
     // 初始资金50万
     private double cash = 500000.00;
-    private TradeReportDto tradeReport;
+    private Tr0 tradeReport;
 
-    public Policy(List<TradedEntity> tradeds, List<BalanceAccount> balances, Map<String, List<PriceEntity>> kLines) {
+    public P0(List<TradedEntity> tradeds, List<B0> balances, Map<String, List<PriceEntity>> kLines) {
         this.endgames = tradeds;
         this.balanceAccounts = balances;
         this.kLines = kLines;
@@ -41,11 +41,11 @@ public class Policy {
 
 
     public void execute() {
-        this.tradeReport = new TradeReportDto(startDate, middleDate, endDate);
+        this.tradeReport = new Tr0(startDate, middleDate, endDate);
         // 拆分残局交易和回测交易
         // 开始残局交易
         startDate.datesUntil(middleDate.plusDays(1)).forEach(date -> {
-            TradeDateDto record = new TradeDateDto(date, getAllKLinesByDate(date));
+            Td0 record = new Td0(date, getAllKLinesByDate(date));
             // 循环调用每个账户的execute方法
             balanceAccounts.forEach(it -> it.endGameExecute(record));
             if (!record.getTrades().isEmpty() || date.equals(endDate)) {
@@ -60,7 +60,7 @@ public class Policy {
         });
         // 开始回测交易
         middleDate.datesUntil(endDate.plusDays(1)).forEach(date -> {
-            TradeDateDto record = new TradeDateDto(date, getAllKLinesByDate(date));
+            Td0 record = new Td0(date, getAllKLinesByDate(date));
             // 循环调用每个账户的execute方法
             balanceAccounts.forEach(it -> it.backTradeExechte(record));
             if (!record.getTrades().isEmpty() || date.equals(endDate)) {
@@ -84,7 +84,7 @@ public class Policy {
     // 获取账户总市值：所有股票市值+现金市值
     public double totalAmount() {
         return this.balanceAccounts.stream()
-                .mapToDouble(BalanceAccount::totalAmount).sum()
+                .mapToDouble(B0::totalAmount).sum()
                 + this.cash;
     }
 

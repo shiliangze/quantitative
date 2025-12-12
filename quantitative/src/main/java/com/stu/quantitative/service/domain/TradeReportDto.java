@@ -5,28 +5,34 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class TradeReportDto {
-    private final LocalDate startDate, endDate, middleDate;
-    // 历史交易回测交易
-    private final List<TradeDateDto> endGame = new ArrayList<>(), backTrade = new ArrayList<>();
+    private final List<TradeTableDto> tables = new ArrayList<>();
 
-    public TradeReportDto(LocalDate startDate, LocalDate middleDate, LocalDate endDate) {
-        this.startDate = startDate;
-        this.endDate = endDate;
-        this.middleDate = middleDate;
-    }
+    private TradeTableDto currentTable = null;
 
-    public void add(TradeDateDto record) {
-        if (record.getDate().isAfter(this.middleDate)) {
-            backTrade.add(record);
-        } else {
-            endGame.add(record);
+    public void exchange(LocalDate date, int investCode, int stockCode, int direction, String price, String quantity) {
+        if(null!=currentTable && currentTable.getDate().equals(date)){
+            //日期相同，说明当天已有交易记录，只需要添加新的交易即可，不需要初始化
+            this.currentTable.exchange(investCode, stockCode, direction, price, quantity);
+        }
+        else{
+            //日期不同，说明当天无交易记录，需要初始化新的交易记录
+            this.currentTable = new TradeTableDto(date, investCode, stockCode, direction, price, quantity);
+            this.tables.add(this.currentTable);
         }
     }
+    // 总仓日志
+    public void clearing(LocalDate date,String total,String cash,String amount){
+        if(null!=currentTable && currentTable.getDate().equals(date)){
+            //  当日有交易记录，则记录相关清算信息
+            this.currentTable.pool(amount);
+        }
+    }
+    // balance日志
+    public void clearing(LocalDate date,String amount,String share,,,){
+        if(null!=currentTable && currentTable.getDate().equals(date)){
+            //  当日有交易记录，则记录相关清算信息
 
-    public void printAll() {
-        System.out.printf("历史交易：起始日期：%tF，结束日期：%tF%n", startDate, middleDate);
-        endGame.forEach(TradeDateDto::printAll);
-        System.out.printf("回测交易：：起始日期：%tF，结束日期：%tF%n", middleDate.plusDays(1), endDate);
-        backTrade.forEach(TradeDateDto::printAll);
+        }
+        // 无交易，不记录清算信息
     }
 }

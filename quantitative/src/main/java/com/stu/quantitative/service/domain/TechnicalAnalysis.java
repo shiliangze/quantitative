@@ -8,37 +8,37 @@ import java.util.HashMap;
 import java.util.Map;
 
 class TechnicalAnalysis {
-    private Map<Integer, CircularFifoQueue<PriceEntity>> history = new HashMap<Integer, CircularFifoQueue<PriceEntity>>() {{
-        put(5, new CircularFifoQueue<PriceEntity>(5));
-        put(10, new CircularFifoQueue<PriceEntity>(10));
-        put(20, new CircularFifoQueue<PriceEntity>(20));
-        put(30, new CircularFifoQueue<PriceEntity>(30));
-        put(60, new CircularFifoQueue<PriceEntity>(60));
-        put(120, new CircularFifoQueue<PriceEntity>(120));
-        put(250, new CircularFifoQueue<PriceEntity>(250));
+    private Map<Integer, CircularFifoQueue<Double>> history = new HashMap<Integer, CircularFifoQueue<Double>>() {{
+        put(5, new CircularFifoQueue<Double>(5));
+        put(10, new CircularFifoQueue<Double>(10));
+        put(20, new CircularFifoQueue<Double>(20));
+        put(30, new CircularFifoQueue<Double>(30));
+        put(60, new CircularFifoQueue<Double>(60));
+        put(120, new CircularFifoQueue<Double>(120));
+        put(250, new CircularFifoQueue<Double>(250));
     }};
 
     // 添加价格到历史记录
     //  如果CircularFifoQueue未填满，返回0
-    public void add(PriceEntity price) {
-        for (CircularFifoQueue<PriceEntity> queue : history.values()) {
-            queue.add(price);
+    public void add(double close) {
+        for (CircularFifoQueue<Double> queue : history.values()) {
+            queue.add(close);
         }
     }
 
     // 计算均线
     public double ma(int type) {
-        CircularFifoQueue<PriceEntity> queue = history.get(type);
+        CircularFifoQueue<Double> queue = history.get(type);
         double sum = 0.0;
-        for (PriceEntity p : queue) {
-            sum += p.getClose();
+        for (double p : queue) {
+            sum += p;
         }
         return sum / queue.size();
     }
 
     // 计算历史波动率
     public double hvol(int type) {
-        CircularFifoQueue<PriceEntity> queue = history.get(type);
+        CircularFifoQueue<Double> queue = history.get(type);
         int size = queue.size();
 
         // 如果数据不足，返回0
@@ -48,12 +48,12 @@ class TechnicalAnalysis {
 
         // 计算每日收益率
         double[] returns = new double[size - 1];
-        PriceEntity prev = null;
+        double prev = 0.0;
         int index = 0;
 
-        for (PriceEntity p : queue) {
-            if (prev != null) {
-                double dailyReturn = Math.log(p.getClose() / prev.getClose());
+        for (double p : queue) {
+            if (prev != 0.0) {
+                double dailyReturn = Math.log(p / prev);
                 returns[index++] = dailyReturn;
             }
             prev = p;

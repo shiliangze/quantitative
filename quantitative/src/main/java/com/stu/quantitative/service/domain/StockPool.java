@@ -1,12 +1,14 @@
 package com.stu.quantitative.service.domain;
 
 import com.stu.quantitative.entity.BalanceEntity;
+import com.stu.quantitative.entity.CodeConfigEntity;
 import com.stu.quantitative.entity.StockEntity;
 import lombok.Getter;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * 账户存储类
@@ -16,91 +18,122 @@ import java.util.stream.Collectors;
  */
 public class StockPool {
 
-    // 总现金数量
-    @Getter
-    private double cash = 500000;
     // 最小买入卖出数量3000元
     @Getter
     private final double minAmount = 3000.00;
-    // 股票持仓信息，key：股票id，value：持仓数量
+    // 全量stock
     @Getter
     private final List<StockEntity> stockEntities;
     private final List<BalanceEntity> balances;
+    private final List<CodeConfigEntity> investNameCodes;
     @Getter
-    private final List<StockStore> stockStores;
-    @Getter
-    private final List<BalanceStore> balanceStores;
+    private final List<BalanceAccount> balanceAccounts;
+    private final TradeReportDto tradeReportDto = new TradeReportDto();
 
-    public StockPool(List<StockEntity> stockEntities, List<BalanceEntity> balances) {
+    // 初始资金
+    @Getter
+    private double cash = 500000.00;
+    // 当前总市值
+    private double amount = 0.0;
+
+    public StockPool(
+            List<StockEntity> stockEntities,
+            List<BalanceEntity> balances,
+            List<CodeConfigEntity> investNameCodes
+    ) {
         this.balances = balances;
         this.stockEntities = stockEntities;
-        this.balanceStores = this.balanceToStore(balances, stockEntities);
-        this.stockStores = this.balanceStores.stream().flatMap(it -> it.getStocks().stream()).collect(Collectors.toList());
+        this.balanceAccounts = this.balanceToStore(balances, stockEntities);
+        this.investNameCodes = investNameCodes;
     }
 
-    private List<BalanceStore> balanceToStore(
+    private List<BalanceAccount> balanceToStore(
             List<BalanceEntity> balanceEntities, List<StockEntity> stocks) {
 
-        List<BalanceStore> stores = new ArrayList<>();
+        List<BalanceAccount> stores = new ArrayList<>();
         for (BalanceEntity balanceEntity : balanceEntities) {
             // 筛选出与balanceEntity对应的股票
             StockEntity stockEntity = stocks.stream().filter(it -> it.getId() == balanceEntity.getStockId()).findFirst().get();
-            StockStore stockStore = new StockStore(stockEntity.getId(), balanceEntity.getId());
+            StockAccount stockAccount = new StockAccount(stockEntity, this, balanceEntity.getInvestCode());
             // 是否已经存在该investCode的BalanceStore
-            BalanceStore balanceStore = stores.stream().filter(it -> it.getInvestCode() == balanceEntity.getInvestCode()).findFirst().orElse(null);
-            if (null == balanceStore) {
-                balanceStore = new BalanceStore(balanceEntity.getInvestCode(), 1 - balanceEntity.getShare() * 2, this);
-                stores.add(balanceStore);
+            BalanceAccount balanceAccount = stores.stream().filter(it -> it.getInvestCode() == balanceEntity.getInvestCode()).findFirst().orElse(null);
+            if (null == balanceAccount) {
+                balanceAccount = new BalanceAccount(balanceEntity.getInvestCode(), balanceEntity.getShare(), this);
+                stores.add(balanceAccount);
             }
-            balanceStore.addStock(stockStore);
+            balanceAccount.addStock(stockAccount);
         }
         return stores;
     }
 
-
-    // 交易中调整现金
-    public void exchange(int direction, double delta) {
-        // -=因为金额买正卖负，现金操作相反
-        this.cash -= direction * delta;
-    }
-
-    // 实时计算总市值
-    public double totalAmount() {
-        return this.stockStores.stream().mapToDouble(StockStore::getAmount).sum();
-    }
 
     // 买入操作的前提条件，现金大于等于最低交易金额
     public boolean buyable() {
         return this.cash >= this.minAmount;
     }
 
-    public boolean sellable(int stockId) {
-        return this.stockStores.stream().filter(stockStore -> stockStore.getStockId() == stockId)
-                .findFirst().get().getAmount() >= this.minAmount;
+
+    // 交易方向，1：买，-1：卖
+    public void exchange(
+            LocalDate date, int investCode, int stockCode,
+            int direction, double price, double quantity) {
+        // 资金变化与买卖方向相反
+        this.cash -= direction * price * quantity;
+        //  交易完成后，更新报告信息
+        this.tradeReportDto.exchange(
+                date,
+                investCode,
+                stockCode,
+                direction,
+                String.format("%.3f", price),
+                String.format("%.3f", quantity)
+        );
     }
 
-//    public StockStore getStockStore(int stockId) {
-//        return this.stockStores.stream().filter(stockStore -> stockStore.getStockId() == stockId)
-//                .findFirst().get();
-//    }
 
-    public BalanceStore getBalanceStoreByStockId(int stockId) {
-        int balanceId = this.stockStores.stream().filter(stockStore -> stockStore.getStockId() == stockId)
-                .findFirst().get().getBalanceId();
-        return this.balanceStores.stream().filter(it -> it.getInvestCode() == balanceId).findFirst().get();
+    public void clearing(LocalDate date) {
+        // 1. 分别计算每个balance的市值
+        this.balanceAccounts.forEach(BalanceAccount::calcAmount);
+        // 2. 计算总市值
+        this.amount = this.balanceAccounts.stream().mapToDouble(BalanceAccount::getAmount).sum();
+        // 3. 每个balance盘后清算
+        this.balanceAccounts.forEach(it -> it.clearing(this.amount + this.cash,tradeReportDto,date));
     }
 
-
-    public void blanceClearing(int balanceId) {
-        // balanceAmount：平衡仓总市值
-//        当前balance仓的总市值
-        double balanceAmount = this.stockStores.stream()
-                .filter(stockStore -> stockStore.getBalanceId() == balanceId)
-                .mapToDouble(StockStore::getAmount).sum();
-
-        BalanceStore balanceStore = this.balanceStores.stream().filter(it -> it.getInvestCode() == balanceId).findFirst().get();
-        balanceStore.clearing(balanceAmount, this.totalAmount());
+    // TODO 1.1 打印账户持仓信息和资金信息
+    public void report(int direction) {
+        TradeDirection.fromCode(direction).getDescription();
     }
+
+    public enum TradeDirection {
+        BUY(1, "买入"),
+        NO_TRADE(0, "无交易"),
+        SELL(-1, "卖出"),
+        PAYOUT(2, "派息");
+
+
+        private final int code;
+        private final String description;
+
+        TradeDirection(int code, String description) {
+            this.code = code;
+            this.description = description;
+        }
+
+        public int getCode() {
+            return code;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+
+        // 根据code获取枚举
+        public static TradeDirection fromCode(int code) {
+            return Arrays.stream(TradeDirection.values()).filter(it -> it.code == code).findFirst().orElse(NO_TRADE);
+        }
+    }
+
 }
 
 

@@ -1,14 +1,17 @@
 package com.stu.quantitative.service.domain;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 
 /**
- *
+ * 单只股票交易记录
  */
-public record TradeRecordDto(
-        String investment, int direction, double price, double quantity, double hv, double callShare,
-        double putShare, double callTrend, double putTrend, double callRate, double putRate) {
-    public void printAll() {
-        System.out.printf("%s::交易方向：%s，价格：%.3f，数量：%.3f，波动：%.3f，买入持仓：%.3f，卖出持仓：%.3f，买入趋势：%.3f，卖出趋势：%.3f，买入跌幅：%.3f，卖出涨幅：%.3f%n",
-                this.investment, this.direction > 0 ? "买入" : "卖出", this.price, this.quantity, this.hv, this.callShare, this.putShare, this.callTrend, this.putTrend, this.callRate, this.putRate);
-    }
+@AllArgsConstructor
+@Getter
+public class TradeRecordDto {
+    private final int investCode; //  balance 标志
+    private final int stockCode; // 股票ID
+    private final int direction; // 买入/卖出
+    private final String price; // 交易价格
+    private final String quantity;  // 交易数量
 }

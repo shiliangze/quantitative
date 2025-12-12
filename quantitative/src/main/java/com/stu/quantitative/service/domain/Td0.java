@@ -10,31 +10,31 @@ import java.util.Map;
 import java.util.Optional;
 
 @Data
-public class TradeDateDto {
+public class Td0 {
     private final LocalDate date;
     private final Map<String, Optional<PriceEntity>> prices;
-    private final List<TradeRecordDto> trades = new ArrayList<>();
-    private final List<ShareRecordDto> shares = new ArrayList<>();
+    private final List<Td1> trades = new ArrayList<>();
+    private final List<Sr0> shares = new ArrayList<>();
 
     private double cash,amount;
 
-    public TradeDateDto(LocalDate date, Map<String, Optional<PriceEntity>> prices) {
+    public Td0(LocalDate date, Map<String, Optional<PriceEntity>> prices) {
         this.date = date;
         this.prices = prices;
     }
 
-    public void addTrade(TradeRecordDto tradeRecordDto) {
+    public void addTrade(Td1 tradeRecordDto) {
         this.trades.add(tradeRecordDto);
     }
 
-    public void addShare(ShareRecordDto shareRecordDto) {
+    public void addShare(Sr0 shareRecordDto) {
         this.shares.add(shareRecordDto);
     }
 
     public void printAll() {
         System.out.printf("交易日期：%tF%n", this.date);
-        this.trades.forEach(TradeRecordDto::printAll);
-        this.shares.forEach(ShareRecordDto::printAll);
+        this.trades.forEach(Td1::printAll);
+        this.shares.forEach(Sr0::printAll);
         System.out.println(String.format("持仓市值总和：%.3f，现金流：%.3f：总市值：%.3f", this.amount - this.cash, this.cash, this.amount));
     }
 }
