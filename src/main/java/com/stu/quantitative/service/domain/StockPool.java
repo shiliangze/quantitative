@@ -80,14 +80,7 @@ public class StockPool {
         // 资金变化与买卖方向相反
         this.cash -= direction * price * quantity;
         //  交易完成后，更新报告信息
-        this.tradeReportDto.exchange(
-                date,
-                investCode,
-                stockCode,
-                direction,
-                String.format("%.3f", price),
-                String.format("%.3f", quantity)
-        );
+        this.tradeReportDto.exchange(date, investCode, stockCode, direction, price, quantity);
     }
 
 
@@ -96,44 +89,16 @@ public class StockPool {
         this.balanceAccounts.forEach(BalanceAccount::calcAmount);
         // 2. 计算总市值
         this.amount = this.balanceAccounts.stream().mapToDouble(BalanceAccount::getAmount).sum();
+        SettlementRecordDto settlementRecordDto = new SettlementRecordDto(this.cash, this.amount);
         // 3. 每个balance盘后清算
-        this.balanceAccounts.forEach(it -> it.clearing(this.amount + this.cash,tradeReportDto,date));
+        this.balanceAccounts.forEach(it -> it.clearing(this.amount + this.cash, settlementRecordDto, date));
+        // report：总仓级别结算
+        this.tradeReportDto.clearing(date, settlementRecordDto);
     }
 
-    // TODO 1.1 打印账户持仓信息和资金信息
-    public void report(int direction) {
-        TradeDirection.fromCode(direction).getDescription();
+    public void report(){
+        this.tradeReportDto.report();
     }
-
-    public enum TradeDirection {
-        BUY(1, "买入"),
-        NO_TRADE(0, "无交易"),
-        SELL(-1, "卖出"),
-        PAYOUT(2, "派息");
-
-
-        private final int code;
-        private final String description;
-
-        TradeDirection(int code, String description) {
-            this.code = code;
-            this.description = description;
-        }
-
-        public int getCode() {
-            return code;
-        }
-
-        public String getDescription() {
-            return description;
-        }
-
-        // 根据code获取枚举
-        public static TradeDirection fromCode(int code) {
-            return Arrays.stream(TradeDirection.values()).filter(it -> it.code == code).findFirst().orElse(NO_TRADE);
-        }
-    }
-
 }
 
 

@@ -70,7 +70,7 @@ public class TraderService {
                 }
         ).toList();
 
-        Executor executor = new Executor(tradeds, balancePolicies);
+        Executor executor = new Executor(tradeds, balancePolicies,pool);
         executor.execute();
     }
 

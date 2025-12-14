@@ -65,4 +65,4 @@ class TechnicalAnalysis {
         // 年化处理（乘以交易日的平方根，通常252个交易日）
         return volatility * Math.sqrt(252);
     }
-    }
+}

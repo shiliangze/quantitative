@@ -30,7 +30,6 @@ public class BalancePolicy {
 
     // 历史交易
     public void endGameExecute(LocalDate date) {
-        this.balanceAccount.endGameExecute(date);
         // 所有股票全都执行一遍execute
         this.stocks.stream()
                 .filter(it -> it.tradeable(date))// 过滤无交易的日期

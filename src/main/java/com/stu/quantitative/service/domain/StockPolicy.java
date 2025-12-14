@@ -46,7 +46,7 @@ public class StockPolicy {
     }
 
     public LocalDate getStartTraded() {
-        return this.tradeds.getFirst().getDate();
+        return this.tradeds.stream().findFirst().map(TradedEntity::getDate).orElse(LocalDate.MIN);
     }
 
     public LocalDate getEndKline() {
@@ -101,7 +101,7 @@ public class StockPolicy {
      * @return
      */
     public int backTradeExecute() {
-        //  TODO  2.0 历史波动率已经放到盘后计算了，第二天用前日计算得出的历史波动率
+        //  TODO  1.0 历史波动率已经放到盘后计算了，第二天用前日计算得出的历史波动率
         //      注意首日交易问题，设置好初始值，保证首日交易正常
 
         // 3. 执行交易
@@ -123,7 +123,7 @@ public class StockPolicy {
         // 1.计算交易金额
         double callAmount = this.stockAccount.getPool().getCash() / 5 //购买金额，初始值，现金/5
                 * this.balanceAccount.getShare() // 乘以平衡仓的预期份额
-                * Math.pow(2 / Math.PI * Math.atan(this.stockAccount.generateAsymptoteRate()), 2); // 乘以渐进率，（asymptote 每次调用，意味着执行了一次买入交易，自增1）
+                * this.stockAccount.getAsymptoteRate(); // 乘以渐进率，（asymptote 每次调用，意味着执行了一次买入交易，自增1）
         callAmount = Math.max(callAmount, this.stockAccount.getPool().getMinAmount()); // 交易金额不得低于最小交易金额数
 
         // 交易数量：购买金额/交易价

@@ -18,18 +18,19 @@ public class Executor {
     private final List<TradedEntity> endgames;
     // 最初交易日，最后交易日
     private final LocalDate startDate, middleDate, endDate;
-    private StockPool stockPool;
+    private final StockPool stockPool;
 
     // 初始资金50万
     private double cash = 500000.00;
-    private Tr0 tradeReport;
 
-    public Executor(List<TradedEntity> tradeds, List<BalancePolicy> balances) {
+    public Executor(List<TradedEntity> tradeds, List<BalancePolicy> balances, StockPool pool) {
+        this.stockPool = pool;
         this.endgames = tradeds;
         this.balancePolicies = balances;
         this.startDate = balances.stream().map(BalancePolicy::getStartKLine).min(LocalDate::compareTo).orElse(null);
         // 回测交易起始日
         this.middleDate = balances.stream().map(BalancePolicy::getStartTradedEnd).max(LocalDate::compareTo).orElse(null);
+//        this.middleDate = startDate;
         this.endDate = balances.stream().map(BalancePolicy::getEndKline).max(LocalDate::compareTo).orElse(null);
     }
 
@@ -48,7 +49,7 @@ public class Executor {
             // 执行清盘任务
             this.stockPool.clearing(date);
         });
-
+        // 打印账户持仓信息和资金信息
         this.stockPool.report();
     }
 
