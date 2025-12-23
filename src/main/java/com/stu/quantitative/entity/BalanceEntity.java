@@ -29,6 +29,8 @@ public class BalanceEntity {
     @Column
     private int stockId;
 
+    @Column int priority;
+
     // 仓位指数
     @Column
     private double share;

@@ -3,12 +3,14 @@ package com.stu.quantitative.service.domain;
 import lombok.Data;
 
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
 
 @Data
 public class BalancePolicy {
     private final List<StockPolicy> stocks;
     private final BalanceAccount balanceAccount;
+
     public BalancePolicy(BalanceAccount balanceAccount, List<StockPolicy> stocks) {
         this.balanceAccount = balanceAccount;
         this.stocks = stocks;
@@ -39,8 +41,12 @@ public class BalancePolicy {
 
     // 回测交易
     public void backTradeExechte(LocalDate date) {
+        // TODO 9.0 目前采取最简单策略，只操作优先级最高的一条数据
+        //  未来需要考虑多种平衡仓类型
         this.stocks.stream()
-                .filter(it -> it.tradeable(date))// 过滤无交易的日期
-                .anyMatch(it->it.backTradeExecute() !=0);
+                .filter(it -> it.tradeable(date))
+                .min(Comparator.comparingInt(stock ->
+                        stock.getStockAccount().getPriority()))
+                .ifPresent(StockPolicy::backTradeExecute);
     }
 }

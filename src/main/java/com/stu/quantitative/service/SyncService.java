@@ -6,17 +6,14 @@ import com.stu.quantitative.entity.ExchangeEntity;
 import com.stu.quantitative.entity.PriceEntity;
 import com.stu.quantitative.entity.StockEntity;
 import com.stu.quantitative.service.domain.Alphavantage;
-import jakarta.annotation.PostConstruct;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 
 @Slf4j
 @Service
@@ -34,11 +31,6 @@ public class SyncService {
 
     private List<CodeConfigEntity> tokens;
 
-    @PostConstruct
-    public void init() {
-        this.tokens = this.codeConfigService.findAllBySku("token");
-    }
-
 //    @Scheduled(fixedDelay = 1000 * 60 * 3)
     @Transactional
     @SneakyThrows
@@ -47,20 +39,20 @@ public class SyncService {
         PriceEntity price = this.priceService.findTopByStockIdOrderByDate(stock.getId()).orElse(null);
         if (null == price || price.getDate().plusDays(100).isBefore(LocalDate.now())) {
             // 超过100天，全量同步
-            String token = this.tokens.stream().filter(it -> it.getCode()==0).findFirst().get().getValue();
-            ExchangeEntity exchange = this.exchangeService.findByCodeAndSource(stock.getExchange(),0).orElse(null);
+            String token = this.tokens.stream().filter(it -> it.getCode() == 0).findFirst().get().getValue();
+            ExchangeEntity exchange = this.exchangeService.findByCodeAndSource(stock.getExchange(), 0).orElse(null);
             String ticker = null == exchange ? stock.getTicker() : String.format("%s.%s", stock.getTicker(), exchange.getValue());
             // 超过100天，全量同步
-            DailyPriceResponseDto dailyPriceResponseDto = new Alphavantage(token,ticker).request(stock,"full");
+            DailyPriceResponseDto dailyPriceResponseDto = new Alphavantage(token, ticker).request(stock, "full");
             log.info(dailyPriceResponseDto.toString());
             // k线信息入库
             this.priceService.kLineSync(dailyPriceResponseDto, stock);
         } else {
-            String token = this.tokens.stream().filter(it -> it.getCode()==0).findFirst().get().getValue();
-            ExchangeEntity exchange = this.exchangeService.findByCodeAndSource(stock.getExchange(),0).orElse(null);
+            String token = this.tokens.stream().filter(it -> it.getCode() == 0).findFirst().get().getValue();
+            ExchangeEntity exchange = this.exchangeService.findByCodeAndSource(stock.getExchange(), 0).orElse(null);
             String ticker = null == exchange ? stock.getTicker() : String.format("%s.%s", stock.getTicker(), exchange.getValue());
             // 未超过100天，增量同步
-            DailyPriceResponseDto dailyPriceResponseDto = new Alphavantage(token,ticker).request(stock,"compact");
+            DailyPriceResponseDto dailyPriceResponseDto = new Alphavantage(token, ticker).request(stock, "compact");
             // k线信息入库
             this.priceService.kLineSync(dailyPriceResponseDto, stock);
         }

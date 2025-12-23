@@ -29,19 +29,23 @@ public class Executor {
         this.balancePolicies = balances;
         this.startDate = balances.stream().map(BalancePolicy::getStartKLine).min(LocalDate::compareTo).orElse(null);
         // 回测交易起始日
-        this.middleDate = balances.stream().map(BalancePolicy::getStartTradedEnd).max(LocalDate::compareTo).orElse(null);
-//        this.middleDate = startDate;
+
         this.endDate = balances.stream().map(BalancePolicy::getEndKline).max(LocalDate::compareTo).orElse(null);
+//        this.middleDate = this.endDate;
+        this.middleDate = startDate;
+//        this.middleDate = balances.stream().map(BalancePolicy::getStartTradedEnd).max(LocalDate::compareTo).orElse(null);
+
     }
 
     public void execute() {
         // 拆分残局交易和回测交易
         // 开始残局交易
-        startDate.datesUntil(middleDate.plusDays(1)).forEach(date -> {
+        startDate.datesUntil(middleDate).forEach(date -> {
             //  执行残局交易
             balancePolicies.forEach(it -> it.endGameExecute(date));
             // 执行清盘任务
             this.stockPool.clearing(date);
+
         });
         middleDate.datesUntil(endDate.plusDays(1)).forEach(date -> {
             // 循环调用每个账户的execute方法
@@ -50,7 +54,7 @@ public class Executor {
             this.stockPool.clearing(date);
         });
         // 打印账户持仓信息和资金信息
-        this.stockPool.report();
+        this.stockPool.report(startDate, middleDate, endDate);
     }
 
 }

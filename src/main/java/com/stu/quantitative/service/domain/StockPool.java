@@ -3,12 +3,13 @@ package com.stu.quantitative.service.domain;
 import com.stu.quantitative.entity.BalanceEntity;
 import com.stu.quantitative.entity.CodeConfigEntity;
 import com.stu.quantitative.entity.StockEntity;
+import com.stu.quantitative.service.domain.report.TradeReportDto;
 import lombok.Getter;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 账户存储类
@@ -24,8 +25,6 @@ public class StockPool {
     // 全量stock
     @Getter
     private final List<StockEntity> stockEntities;
-    private final List<BalanceEntity> balances;
-    private final List<CodeConfigEntity> investNameCodes;
     @Getter
     private final List<BalanceAccount> balanceAccounts;
     private final TradeReportDto tradeReportDto = new TradeReportDto();
@@ -36,34 +35,30 @@ public class StockPool {
     // 当前总市值
     private double amount = 0.0;
 
-    public StockPool(
-            List<StockEntity> stockEntities,
-            List<BalanceEntity> balances,
-            List<CodeConfigEntity> investNameCodes
-    ) {
-        this.balances = balances;
+    public StockPool(List<StockEntity> stockEntities, List<BalanceEntity> balances, List<CodeConfigEntity> investNameCodes) {
         this.stockEntities = stockEntities;
-        this.balanceAccounts = this.balanceToStore(balances, stockEntities);
-        this.investNameCodes = investNameCodes;
+        this.balanceAccounts = this.balanceToAccount(balances, stockEntities, investNameCodes);
     }
 
-    private List<BalanceAccount> balanceToStore(
-            List<BalanceEntity> balanceEntities, List<StockEntity> stocks) {
-
-        List<BalanceAccount> stores = new ArrayList<>();
-        for (BalanceEntity balanceEntity : balanceEntities) {
-            // 筛选出与balanceEntity对应的股票
-            StockEntity stockEntity = stocks.stream().filter(it -> it.getId() == balanceEntity.getStockId()).findFirst().get();
-            StockAccount stockAccount = new StockAccount(stockEntity, this, balanceEntity.getInvestCode());
-            // 是否已经存在该investCode的BalanceStore
-            BalanceAccount balanceAccount = stores.stream().filter(it -> it.getInvestCode() == balanceEntity.getInvestCode()).findFirst().orElse(null);
-            if (null == balanceAccount) {
-                balanceAccount = new BalanceAccount(balanceEntity.getInvestCode(), balanceEntity.getShare(), this);
-                stores.add(balanceAccount);
-            }
-            balanceAccount.addStock(stockAccount);
-        }
-        return stores;
+    private List<BalanceAccount> balanceToAccount(List<BalanceEntity> balanceEntities, List<StockEntity> stocks, List<CodeConfigEntity> investNameCodes) {
+        //  1.BalanceEntity归集成investCodes
+        Set<Integer> investCodes = balanceEntities.stream().mapToInt(BalanceEntity::getInvestCode).boxed().collect(Collectors.toSet());
+        // 2.investCodes生成BalanceAccount数组
+        return investCodes.stream().map(it -> {
+            // 2.1 从investNameCodes中获取 investName
+            String investName = investNameCodes.stream().filter(cc -> cc.getCode() == it).findFirst().get().getValue();
+            // 2.2 从balanceEntities中获取 share
+            double share = balanceEntities.stream().filter(be -> be.getInvestCode() == it).findFirst().get().getShare();
+            // 2.3 从balanceEntities中获取 stockAccounts
+            List<StockAccount> stockAccounts = balanceEntities.stream().filter(be -> be.getInvestCode() == it)
+                    .map(be -> stockToAccount(be, stocks)).toList();
+            return new BalanceAccount(it, investName, share, this, stockAccounts,this.tradeReportDto);
+        }).toList();
+    }
+    // balanceEntity 转换为 stockAccount
+    private StockAccount stockToAccount(BalanceEntity balanceEntity, List<StockEntity> stocks) {
+        StockEntity stockEntity = stocks.stream().filter(se -> se.getId() == balanceEntity.getStockId()).findFirst().get();
+        return new StockAccount(stockEntity, this, balanceEntity.getInvestCode(), balanceEntity.getPriority(),this.tradeReportDto);
     }
 
 
@@ -74,30 +69,27 @@ public class StockPool {
 
 
     // 交易方向，1：买，-1：卖
-    public void exchange(
-            LocalDate date, int investCode, int stockCode,
-            int direction, double price, double quantity) {
+    public void exchange(LocalDate date, int stockId, String stockName, int direction, double price, double quantity) {
         // 资金变化与买卖方向相反
         this.cash -= direction * price * quantity;
         //  交易完成后，更新报告信息
-        this.tradeReportDto.exchange(date, investCode, stockCode, direction, price, quantity);
+        this.tradeReportDto.exchange(date, stockId, stockName, direction, price, quantity);
     }
 
-
+    // 盘后清算
     public void clearing(LocalDate date) {
         // 1. 分别计算每个balance的市值
         this.balanceAccounts.forEach(BalanceAccount::calcAmount);
         // 2. 计算总市值
         this.amount = this.balanceAccounts.stream().mapToDouble(BalanceAccount::getAmount).sum();
-        SettlementRecordDto settlementRecordDto = new SettlementRecordDto(this.cash, this.amount);
         // 3. 每个balance盘后清算
-        this.balanceAccounts.forEach(it -> it.clearing(this.amount + this.cash, settlementRecordDto, date));
+        this.balanceAccounts.forEach(it -> it.clearing(this.amount + this.cash, date));
         // report：总仓级别结算
-        this.tradeReportDto.clearing(date, settlementRecordDto);
+        this.tradeReportDto.clearing(date,this.cash,this.amount,this.amount+this.cash);
     }
 
-    public void report(){
-        this.tradeReportDto.report();
+    public void report(LocalDate startDate, LocalDate middleDate, LocalDate endDate){
+        this.tradeReportDto.report(startDate, middleDate, endDate);
     }
 }
 

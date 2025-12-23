@@ -26,21 +26,6 @@ public class TraderService {
     private BalanceService balanceService;
 
 
-//    public void backTrack(int planCode) {
-//        List<StockEntity> stocks = this.stockService.findAll();
-//        List<TradedEntity> tradeds = this.tradedService.findAllByOrderByDate().stream().filter(it ->
-//                stocks.stream().anyMatch(stock -> stock.getId() == it.getStockId())
-//        ).toList();
-//        List<BalanceAccount> balances = this.balanceService.findAccountAllByPlanCode(planCode);
-//
-//        Map<String, List<PriceEntity>> kLines = balances.stream().map(BalanceAccount::getStocks).flatMap(List::stream).distinct().collect(Collectors.toMap(
-//                StockEntity::getTicker,  // key: 元素本身（it）
-//                it -> this.priceService.findByTickerOrderByDate(it.getTicker())  // value: 映射结果
-//        ));
-//        Policy policy = new Policy(tradeds, balances, kLines);
-//        policy.execute();
-//    }
-
     /**
      * 执行回测交易
      *
@@ -56,7 +41,6 @@ public class TraderService {
         StockPool pool = new StockPool(stocks, balances,investNameCodes);
         //  生成balancePolicy数组
         List<BalancePolicy> balancePolicies = pool.getBalanceAccounts().stream().map(it -> {
-                    int investCode = it.getInvestCode();
                     // 找到对应investCode的所有股票id
                     List<StockPolicy> stockPoliciesForBalance = it.getStockAccounts().stream()
                             .map(stock -> {
@@ -64,7 +48,7 @@ public class TraderService {
                                 List<PriceEntity> klines = this.priceService.findByTickerOrderByDate(stock.getStockEntity().getTicker());
                                 return new StockPolicy(stock, it, klines,traders);
                             }).toList();
-                    String investName = investNameCodes.stream().filter(code -> code.getCode() == investCode).map(CodeConfigEntity::getValue).findFirst().get();
+                    //String investName = investNameCodes.stream().filter(code -> code.getCode() == investCode).map(CodeConfigEntity::getValue).findFirst().get();
                     // 调试通过后，全部放到构造器里面
                     return new BalancePolicy(it,stockPoliciesForBalance);
                 }
