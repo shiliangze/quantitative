@@ -13,7 +13,7 @@ import java.util.List;
 //  单股交易对象
 @Slf4j
 @Data
-public class StockPolicy {
+public class StockExecutor {
     //  预期仓位
     @Getter
     private final StockAccount stockAccount;
@@ -33,10 +33,10 @@ public class StockPolicy {
     private TradedEntity currentTraded;
 
 
-    public StockPolicy(StockAccount stockAccount, BalanceAccount balanceAccount,
-                       List<PriceEntity> klines, List<TradedEntity> tradeds) {
+    public StockExecutor(StockAccount stockAccount, BalanceAccount balanceAccount,
+                         List<PriceEntity> klines, List<TradedEntity> tradeds) {
         this.stockAccount = stockAccount;
-//        this.stockAccount.setIpo(klines.getFirst().getDate());
+        this.stockAccount.setIpo(klines.getFirst().getDate());
         this.balanceAccount = balanceAccount;
         this.klines = klines;
         this.tradeds = tradeds;
@@ -94,28 +94,28 @@ public class StockPolicy {
         }
         // 更新当日收盘价，计算最新持仓市值
         // 因为所有k线日无论是否有交易，都会执行endGameExecute，所以该方法放在endGameExecute内
-        this.stockAccount.update(this.currentKLine);
+//        this.stockAccount.update(this.currentKLine);
     }
 
     /**
      * 回测执行交易
-     *
      * @return
      */
-    public void backTradeExecute() {
+    public int backTradeExecute() {
         // 执行交易
-        if (this.currentKLine.getLow() <= this.stockAccount.getCall()) {
-            this.buy();// 如果当天的最低价小于call，则执行买入操作
-        } else if (this.currentKLine.getHigh() >= this.stockAccount.getPut()) {
-            this.sale();// 如果当天的最高价大于等于put，则执行卖出操作
+        if (this.currentKLine.getLow() < this.stockAccount.getCall()) {
+           return this.buy();// 如果当天的最低价小于call，则执行买入操作
+        } else if (this.currentKLine.getHigh() > this.stockAccount.getPut()) {
+           return this.sale();// 如果当天的最高价大于等于put，则执行卖出操作
         }
-        this.stockAccount.update(this.currentKLine);
+        return 0;
+//        this.stockAccount.update(this.currentKLine);
     }
 
     // 买入
-    private void buy() {
+    private int buy() {
         if (!this.stockAccount.getPool().buyable()) {
-            return;// 如果资金池不足，直接跳过
+            return 9;// 如果资金池不足，直接跳过
         }
         // 考虑到除权等操作，call高于最高价，则按最高价作为交易价
         double exchangePrice = Math.min(this.stockAccount.getCall(), this.currentKLine.getHigh());
@@ -129,13 +129,14 @@ public class StockPolicy {
         double quantity = callAmount / exchangePrice;
         // 执行交易记账
         this.stockAccount.exchange(this.date,1, exchangePrice, quantity);
+        return 1;
     }
 
     // 卖出
-    private void sale() {
+    private int sale() {
         // 如果剩余仓位不足，直接跳过
         if (!this.stockAccount.sellable()) {
-            return;
+            return -9;
         }
         // 考虑到除权等操作，卖出交易价不得低于最低价
         double exchangePrice = Math.max(this.stockAccount.getPut(), this.currentKLine.getLow());
@@ -144,5 +145,6 @@ public class StockPolicy {
         double quantity  = putAmount / exchangePrice;
         // 1.从资金池中加入买入金额
         this.stockAccount.exchange(this.date,-1, exchangePrice, quantity);
+        return -1;
     }
 }

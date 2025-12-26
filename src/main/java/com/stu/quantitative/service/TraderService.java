@@ -39,22 +39,22 @@ public class TraderService {
 
         // 生成stockPool
         StockPool pool = new StockPool(stocks, balances,investNameCodes);
-        //  生成balancePolicy数组
-        List<BalancePolicy> balancePolicies = pool.getBalanceAccounts().stream().map(it -> {
+        //  生成balanceExecutor数组
+        List<BalanceExecutor> balanceExecutors = pool.getBalanceAccounts().stream().map(it -> {
                     // 找到对应investCode的所有股票id
-                    List<StockPolicy> stockPoliciesForBalance = it.getStockAccounts().stream()
+                    List<StockExecutor> stockExecutorsForBalance = it.getStockAccounts().stream()
                             .map(stock -> {
                                 List<TradedEntity> traders = this.tradedService.findAllByStockIdOrderByDate(stock.getStockEntity().getId());
                                 List<PriceEntity> klines = this.priceService.findByTickerOrderByDate(stock.getStockEntity().getTicker());
-                                return new StockPolicy(stock, it, klines,traders);
+                                return new StockExecutor(stock, it, klines,traders);
                             }).toList();
                     //String investName = investNameCodes.stream().filter(code -> code.getCode() == investCode).map(CodeConfigEntity::getValue).findFirst().get();
                     // 调试通过后，全部放到构造器里面
-                    return new BalancePolicy(it,stockPoliciesForBalance);
+                    return new BalanceExecutor(it,stockExecutorsForBalance);
                 }
         ).toList();
 
-        Executor executor = new Executor(tradeds, balancePolicies,pool);
+        Executor executor = new Executor(tradeds, balanceExecutors,pool);
         executor.execute();
     }
 

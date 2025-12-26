@@ -9,6 +9,7 @@ import com.stu.quantitative.service.domain.Alphavantage;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,7 +32,7 @@ public class SyncService {
 
     private List<CodeConfigEntity> tokens;
 
-//    @Scheduled(fixedDelay = 1000 * 60 * 3)
+    @Scheduled(fixedDelay = 1000 * 60 * 3)
     @Transactional
     @SneakyThrows
     public void sync() {

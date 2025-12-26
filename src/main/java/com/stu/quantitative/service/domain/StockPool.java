@@ -7,6 +7,7 @@ import com.stu.quantitative.service.domain.report.TradeReportDto;
 import lombok.Getter;
 
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -50,8 +51,10 @@ public class StockPool {
             // 2.2 从balanceEntities中获取 share
             double share = balanceEntities.stream().filter(be -> be.getInvestCode() == it).findFirst().get().getShare();
             // 2.3 从balanceEntities中获取 stockAccounts
-            List<StockAccount> stockAccounts = balanceEntities.stream().filter(be -> be.getInvestCode() == it)
-                    .map(be -> stockToAccount(be, stocks)).toList();
+            List<StockAccount> stockAccounts = balanceEntities.stream()
+                    .filter(be -> be.getInvestCode() == it)
+                    .map(be -> stockToAccount(be, stocks)) //按照优先级排序
+                    .sorted(Comparator.comparingInt(StockAccount::getPriority)).toList();
             return new BalanceAccount(it, investName, share, this, stockAccounts,this.tradeReportDto);
         }).toList();
     }
@@ -78,10 +81,9 @@ public class StockPool {
 
     // 盘后清算
     public void clearing(LocalDate date) {
-        // 1. 分别计算每个balance的市值
-        this.balanceAccounts.forEach(BalanceAccount::calcAmount);
+        // 1.
         // 2. 计算总市值
-        this.amount = this.balanceAccounts.stream().mapToDouble(BalanceAccount::getAmount).sum();
+        this.amount = this.balanceAccounts.stream().mapToDouble(it -> it.update(date)).sum();
         // 3. 每个balance盘后清算
         this.balanceAccounts.forEach(it -> it.clearing(this.amount + this.cash, date));
         // report：总仓级别结算

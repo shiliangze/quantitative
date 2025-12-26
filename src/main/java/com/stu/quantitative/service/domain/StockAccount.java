@@ -8,6 +8,7 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 
 /**
  * 单一股票信息存储
@@ -31,11 +32,11 @@ public class StockAccount {
     // 持仓数量
     @Getter
     private double quantity = 0.0;
-    // 持仓总市值
-    @Getter
+    // 持仓总市值，平均持仓市值
+//    @Getter
     private double amount = 0.0;
-//    @Setter
-//    private LocalDate ipo; // ipo日期
+    // 现金转入
+    private double income = Double.MIN_VALUE,avIncom = Double.MIN_VALUE,profit = 0.0,profitRate = 0.0;
     @Setter
     private PriceEntity currentKLine; // 当前交易日的k线
 
@@ -69,6 +70,11 @@ public class StockAccount {
         return null != this.currentKLine;
     }
 
+    @Setter
+    private LocalDate ipo; // ipo日期
+    // 当前日期,最近一次有交易的日期
+    private LocalDate today, exchangeDate;
+
     // 执行交易
     //direction：交易方向，1：买，-1：卖，price：交易价格，quantity：交易数量
     public void exchange(LocalDate date, int direction, double price, double quantity) {
@@ -78,29 +84,43 @@ public class StockAccount {
         this.pool.exchange(date, this.stockEntity.getId(), this.stockEntity.getName(), direction, price, quantity);
         // 2.增加响应持仓数量
         this.quantity += direction * quantity;
+        this.income += direction * price * quantity;
         // 3. 更新渐进率
         if (1 == direction) {
             this.asymptote++;
         }
     }
 
-    // 当日无交易时，更新收盘价，计算最新持仓市值
-    public void update(PriceEntity price) {
-        this.close = price.getClose();
+    // 更新收盘价，并计算市值
+    public double update(LocalDate today) {
+        this.today = today;
+        if(today.isEqual(this.ipo)){return 0.0;}
+        if (null != this.currentKLine) {
+            this.close = this.currentKLine.getClose();
+        }
         // 2. 市值必须放在update中，因为清盘之前，balance会计算仓位信息
         this.amount = this.quantity * this.close;
+        long delta = ChronoUnit.DAYS.between(this.ipo, today);
+        this.profit = this.amount - this.income;
+        this.avIncom = ((delta-1)*this.avIncom + this.income)/delta;
+        //  计算年化收益率
+        this.profitRate = Math.pow(1 + this.profit/this.avIncom, 365.0 / delta) - 1;
+        return this.amount;
     }
 
-    // TODO 3.0 未来该方法需要改成balance级别的，如果第一级仓位（TLT）不足，就卖二级仓位（IEF），
-    //  显示清算结果的时候，也依次显示，只显示当前能交易的一级股票，其他优先级的股票信息不予显示
     public boolean sellable() {
         return this.amount >= this.pool.getMinAmount();
     }
 
-    public void clearing(LocalDate date, double shareCoefficient) {
+    public void clearing(LocalDate date, double shareCoefficient, int direction) {
         //  非交易日不做清算
         if (!this.tradeable()) {
             return;
+        }
+        //  如果balance发生了交易，并且当前股票未发生交易
+        //  则balance更新所有股票的当前价，重新计算目标价格
+        if (0 != direction && 0 == this.direction) {
+            this.price = this.close;
         }
         // 1. 计算当前股票的历史波动率
         this.technicalAnalysis.add(this.close);
@@ -115,12 +135,12 @@ public class StockAccount {
                     date, stockEntity.getId(), stockEntity.getName(), this.investCode,
                     this.direction, this.amount, this.close, this.quantity,
                     this.hv, this.asymptote, this.putTrend, this.callTrend,
-                    this.putRate, this.callRate, this.put, this.call);
+                    this.putRate, this.callRate, this.put, this.call,
+                    this.profit,this.profitRate);
         }
         // 最后一步，清理数据
         this.direction = 0; //交易方向清零
     }
-
 
     // 计算趋势因子
     private void trend() {

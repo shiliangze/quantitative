@@ -2,7 +2,6 @@ package com.stu.quantitative.service.domain;
 
 import com.stu.quantitative.service.domain.report.TradeReportDto;
 import lombok.Getter;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDate;
@@ -22,11 +21,8 @@ public class BalanceAccount {
     private final StockPool stockPool;
     private final TradeReportDto tradeReportDto;
 
-
-
     // 当日总市值
     @Getter
-    @Setter
     private double amount;
     // 平衡仓在总仓位的占比
     @Getter
@@ -47,8 +43,9 @@ public class BalanceAccount {
     }
 
     // 计算balance市值
-    public void calcAmount() {
-        this.amount = this.stockAccounts.stream().mapToDouble(StockAccount::getAmount).sum();
+    public double update(LocalDate today) {
+        this.amount = this.stockAccounts.stream().mapToDouble(it -> it.update(today)).sum();
+        return amount;
     }
 
     // 平衡仓级别清盘
@@ -58,8 +55,11 @@ public class BalanceAccount {
         this.position = amount / totalAmount;
         this.shareOffset = (1.0001-this.position) / (this.share + 0.0001);
         this.shareCoefficient = Math.log10(this.shareOffset +9);
+        int direction = this.stockAccounts.stream()
+                .filter(it -> it.getDirection() == 1 || it.getDirection() == -1)
+                .findFirst().map(StockAccount::getDirection).orElse(0);
         // 盘后清算每个股票
-        this.stockAccounts.forEach(it->it.clearing(date,this.shareCoefficient));
+        this.stockAccounts.forEach(it->it.clearing(date,this.shareCoefficient,direction));
         // 平衡仓清盘任务
         this.tradeReportDto.clearing(date, this.investCode, this.investName, this.amount, this.share,
                 this.position, this.shareOffset, this.shareCoefficient);
