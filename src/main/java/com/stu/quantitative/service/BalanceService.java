@@ -18,8 +18,5 @@ public class BalanceService {
 
     public List<BalanceEntity> findAllByPlanCode(int planCode) {
         return this.balanceRepository.findAllByPlanCode(planCode);
-
     }
-
-
 }

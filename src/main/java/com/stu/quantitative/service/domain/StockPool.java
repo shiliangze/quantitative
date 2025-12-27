@@ -19,15 +19,14 @@ import java.util.stream.Collectors;
  * 计算：根据每次交易，更新账户持仓信息和资金信息
  */
 public class StockPool {
-
     // 最小买入卖出数量3000元
     @Getter
     private final double minAmount = 3000.00;
-    // 全量stock
     @Getter
-    private final List<StockEntity> stockEntities;
+    private final List<StockAccount> stockAccounts;
     @Getter
     private final List<BalanceAccount> balanceAccounts;
+    @Getter
     private final TradeReportDto tradeReportDto = new TradeReportDto();
 
     // 初始资金
@@ -36,32 +35,14 @@ public class StockPool {
     // 当前总市值
     private double amount = 0.0;
 
-    public StockPool(List<StockEntity> stockEntities, List<BalanceEntity> balances, List<CodeConfigEntity> investNameCodes) {
-        this.stockEntities = stockEntities;
-        this.balanceAccounts = this.balanceToAccount(balances, stockEntities, investNameCodes);
-    }
-
-    private List<BalanceAccount> balanceToAccount(List<BalanceEntity> balanceEntities, List<StockEntity> stocks, List<CodeConfigEntity> investNameCodes) {
-        //  1.BalanceEntity归集成investCodes
-        Set<Integer> investCodes = balanceEntities.stream().mapToInt(BalanceEntity::getInvestCode).boxed().collect(Collectors.toSet());
-        // 2.investCodes生成BalanceAccount数组
-        return investCodes.stream().map(it -> {
-            // 2.1 从investNameCodes中获取 investName
-            String investName = investNameCodes.stream().filter(cc -> cc.getCode() == it).findFirst().get().getValue();
-            // 2.2 从balanceEntities中获取 share
-            double share = balanceEntities.stream().filter(be -> be.getInvestCode() == it).findFirst().get().getShare();
-            // 2.3 从balanceEntities中获取 stockAccounts
-            List<StockAccount> stockAccounts = balanceEntities.stream()
-                    .filter(be -> be.getInvestCode() == it)
-                    .map(be -> stockToAccount(be, stocks)) //按照优先级排序
-                    .sorted(Comparator.comparingInt(StockAccount::getPriority)).toList();
-            return new BalanceAccount(it, investName, share, this, stockAccounts,this.tradeReportDto);
-        }).toList();
-    }
-    // balanceEntity 转换为 stockAccount
-    private StockAccount stockToAccount(BalanceEntity balanceEntity, List<StockEntity> stocks) {
-        StockEntity stockEntity = stocks.stream().filter(se -> se.getId() == balanceEntity.getStockId()).findFirst().get();
-        return new StockAccount(stockEntity, this, balanceEntity.getInvestCode(), balanceEntity.getPriority(),this.tradeReportDto);
+    public StockPool(List<StockEntity> stockEntities, List<BalanceEntity> balanceEntities) {
+        this.stockAccounts = stockEntities.stream()
+                .map(stockEntity -> new StockAccount(stockEntity, this)).toList();
+        this.balanceAccounts = balanceEntities.stream().map(balanceEntity ->
+                new BalanceAccount(balanceEntity, this, this.stockAccounts.stream()
+                        .filter(stockAccount -> stockAccount.getStockEntity().getBalanceId() == balanceEntity.getId())
+                        .sorted(Comparator.comparingInt(stockAccount -> stockAccount.getStockEntity().getPriority()))
+                        .toList(), this.tradeReportDto)).toList();
     }
 
 

@@ -16,22 +16,14 @@ public class BalanceEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
 
-    // 股票编号
+    @Column
+    private String name;
+
+    // 投资类型编号
     @Column
     private int planCode;
 
-    // 股票名称
-    @Column
-    private int investCode;
-
-
-    //  股票代码
-    @Column
-    private int stockId;
-
-    @Column int priority;
-
-    // 仓位指数
+    // 预期仓位
     @Column
     private double share;
 

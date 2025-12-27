@@ -56,10 +56,7 @@ public class Executor {
     }
 
 }
-// TODO  0.0  调整表结构：
-//  1. stock表新增balanceId字段，关联balance表
-//  2. balance表取消investcode，直接使用id字段替代原来的investcode
-//  3. balance表每一条记录代表一个balance，而不是以前的stock
-//  4. balance表中添加name字段，并取消codeconfig中的invest映射
+// TODO  0.0  setipo
+
 // TODO 1.0  添加佣金模块
 // TODO 2.0 根据输入执行回测或历史交易

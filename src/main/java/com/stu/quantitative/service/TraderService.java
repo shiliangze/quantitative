@@ -32,23 +32,21 @@ public class TraderService {
      * @param planCode
      */
     public void execute(int planCode) {
-        List<CodeConfigEntity> investNameCodes = this.codeConfigService.findAllBySku("investName");
         List<StockEntity> stocks = this.stockService.findAll();
         List<TradedEntity> tradeds = this.tradedService.findAllByOrderByDate();
         List<BalanceEntity> balances = this.balanceService.findAllByPlanCode(planCode);
 
         // 生成stockPool
-        StockPool pool = new StockPool(stocks, balances,investNameCodes);
+        StockPool pool = new StockPool(stocks, balances);
         //  生成balanceExecutor数组
         List<BalanceExecutor> balanceExecutors = pool.getBalanceAccounts().stream().map(it -> {
                     // 找到对应investCode的所有股票id
                     List<StockExecutor> stockExecutorsForBalance = it.getStockAccounts().stream()
                             .map(stock -> {
                                 List<TradedEntity> traders = this.tradedService.findAllByStockIdOrderByDate(stock.getStockEntity().getId());
-                                List<PriceEntity> klines = this.priceService.findByTickerOrderByDate(stock.getStockEntity().getTicker());
-                                return new StockExecutor(stock, it, klines,traders);
+                                List<PriceEntity> klines = this.priceService.findByStockIdOrderByDate(stock.getStockEntity().getId());
+                                return new StockExecutor(stock,it.getBalanceEntity().getShare(), klines,  traders);
                             }).toList();
-                    //String investName = investNameCodes.stream().filter(code -> code.getCode() == investCode).map(CodeConfigEntity::getValue).findFirst().get();
                     // 调试通过后，全部放到构造器里面
                     return new BalanceExecutor(it,stockExecutorsForBalance);
                 }

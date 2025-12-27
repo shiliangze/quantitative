@@ -17,10 +17,13 @@ public class StockExecutor {
     //  预期仓位
     @Getter
     private final StockAccount stockAccount;
-    private final BalanceAccount balanceAccount;
     // klines和tradeds都是已排序的
     private final List<PriceEntity> klines;
     private final List<TradedEntity> tradeds;
+    // 当前仓位
+    private double balanceShare;
+
+
 
     /**
      * 以下为：周期为一天的变量
@@ -33,11 +36,11 @@ public class StockExecutor {
     private TradedEntity currentTraded;
 
 
-    public StockExecutor(StockAccount stockAccount, BalanceAccount balanceAccount,
+    public StockExecutor(StockAccount stockAccount,double balanceShare,
                          List<PriceEntity> klines, List<TradedEntity> tradeds) {
         this.stockAccount = stockAccount;
         this.stockAccount.setIpo(klines.getFirst().getDate());
-        this.balanceAccount = balanceAccount;
+        this.balanceShare = balanceShare;
         this.klines = klines;
         this.tradeds = tradeds;
     }
@@ -101,12 +104,12 @@ public class StockExecutor {
      * 回测执行交易
      * @return
      */
-    public int backTradeExecute() {
+    public int backTradeExecute(double balanceAmount) {
         // 执行交易
         if (this.currentKLine.getLow() < this.stockAccount.getCall()) {
            return this.buy();// 如果当天的最低价小于call，则执行买入操作
         } else if (this.currentKLine.getHigh() > this.stockAccount.getPut()) {
-           return this.sale();// 如果当天的最高价大于等于put，则执行卖出操作
+           return this.sale(balanceAmount);// 如果当天的最高价大于等于put，则执行卖出操作
         }
         return 0;
 //        this.stockAccount.update(this.currentKLine);
@@ -121,7 +124,7 @@ public class StockExecutor {
         double exchangePrice = Math.min(this.stockAccount.getCall(), this.currentKLine.getHigh());
         // 1.计算交易金额
         double callAmount = this.stockAccount.getPool().getCash() / 5 //购买金额，初始值，现金/5
-                * this.balanceAccount.getShare() // 乘以平衡仓的预期份额
+                * this.balanceShare // 乘以平衡仓的预期份额
                 * Math.tanh(this.stockAccount.getAsymptote()/5); // 乘以渐进率，（asymptote 每次调用，意味着执行了一次买入交易，自增1）
         callAmount = Math.max(callAmount, this.stockAccount.getPool().getMinAmount()); // 交易金额不得低于最小交易金额数
 
@@ -133,7 +136,7 @@ public class StockExecutor {
     }
 
     // 卖出
-    private int sale() {
+    private int sale(double balanceAmount) {
         // 如果剩余仓位不足，直接跳过
         if (!this.stockAccount.sellable()) {
             return -9;
@@ -141,7 +144,7 @@ public class StockExecutor {
         // 考虑到除权等操作，卖出交易价不得低于最低价
         double exchangePrice = Math.max(this.stockAccount.getPut(), this.currentKLine.getLow());
         // 本次卖出金额，平衡仓位20%与最小卖出金额，两者取大
-        double putAmount = Math.max(this.balanceAccount.getAmount() / 5, this.stockAccount.getPool().getMinAmount());
+        double putAmount = Math.max(balanceAmount / 5, this.stockAccount.getPool().getMinAmount());
         double quantity  = putAmount / exchangePrice;
         // 1.从资金池中加入买入金额
         this.stockAccount.exchange(this.date,-1, exchangePrice, quantity);

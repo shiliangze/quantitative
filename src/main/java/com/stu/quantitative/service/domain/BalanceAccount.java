@@ -1,5 +1,6 @@
 package com.stu.quantitative.service.domain;
 
+import com.stu.quantitative.entity.BalanceEntity;
 import com.stu.quantitative.service.domain.report.TradeReportDto;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -10,10 +11,7 @@ import java.util.List;
 @Slf4j
 public class BalanceAccount {
     @Getter
-    private final int investCode;
-    private final String investName;
-    @Getter
-    private double share;
+    private final BalanceEntity balanceEntity;
     // 平衡仓总金额
     @Getter
     private final List<StockAccount> stockAccounts ;
@@ -28,10 +26,8 @@ public class BalanceAccount {
     @Getter
     private double position, shareOffset, shareCoefficient;
 
-    public BalanceAccount(int investCode,String investName, double share, StockPool stockPool,List<StockAccount> stockAccounts,TradeReportDto tradeReportDto) {
-        this.investCode = investCode;
-        this.investName = investName;
-        this.share = share;
+    public BalanceAccount(BalanceEntity balanceEntity, StockPool stockPool, List<StockAccount> stockAccounts, TradeReportDto tradeReportDto) {
+        this.balanceEntity = balanceEntity;
         this.stockPool = stockPool;
         this.stockAccounts = stockAccounts;
         this.tradeReportDto = tradeReportDto;
@@ -53,7 +49,7 @@ public class BalanceAccount {
         if(!this.tradeable()){return;}
         // 计算仓位因子
         this.position = amount / totalAmount;
-        this.shareOffset = (1.0001-this.position) / (this.share + 0.0001);
+        this.shareOffset = (1.0001-this.position) / (this.balanceEntity.getShare() + 0.0001);
         this.shareCoefficient = Math.log10(this.shareOffset +9);
         int direction = this.stockAccounts.stream()
                 .filter(it -> it.getDirection() == 1 || it.getDirection() == -1)
@@ -61,8 +57,8 @@ public class BalanceAccount {
         // 盘后清算每个股票
         this.stockAccounts.forEach(it->it.clearing(date,this.shareCoefficient,direction));
         // 平衡仓清盘任务
-        this.tradeReportDto.clearing(date, this.investCode, this.investName, this.amount, this.share,
-                this.position, this.shareOffset, this.shareCoefficient);
+        this.tradeReportDto.clearing(date, this.balanceEntity.getId(), this.balanceEntity.getName(),
+                this.amount, this.balanceEntity.getShare(), this.position, this.shareOffset, this.shareCoefficient);
 
     }
 }

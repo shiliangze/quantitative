@@ -16,6 +16,12 @@ public class StockEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
 
+    @Column
+    private int balanceId;
+
+    @Column
+    private int priority;
+
     // 股票编号
     @Column
     private String ticker;
