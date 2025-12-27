@@ -3,6 +3,7 @@ package com.stu.quantitative.service.domain;
 import lombok.Data;
 
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
 
 @Data
@@ -45,12 +46,8 @@ public class BalanceExecutor {
                 // -2代表该股票因数量不足而无法卖出
                 // takeWhile 遇到非-2时，停止执行
                 // 当且仅当高优先级的股票无法卖出，递补进行下一股票的交易
-                .takeWhile(it->it.backTradeExecute()==-2)
+                .takeWhile(it->it.backTradeExecute(this.balanceAccount.getAmount())==-2)
                 .findAny();
     }
 
-//    // 终日交易
-//    public void endTradeExecute(LocalDate date) {
-//        this.stocks.forEach(StockExecutor::endTradeExecute);// 执行交易
-//    }
 }

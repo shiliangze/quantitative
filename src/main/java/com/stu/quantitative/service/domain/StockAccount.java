@@ -22,11 +22,6 @@ public class StockAccount {
     private final StockEntity stockEntity;
     @Getter
     private final StockPool pool;
-    @Getter
-    private final int investCode;
-    //优先级
-    @Getter
-    private final int priority;
     // 交易记录
     private final TradeReportDto tradeReportDto;
     // 持仓数量
@@ -36,7 +31,7 @@ public class StockAccount {
 //    @Getter
     private double amount = 0.0;
     // 现金转入
-    private double income = Double.MIN_VALUE,avIncom = Double.MIN_VALUE,profit = 0.0,profitRate = 0.0;
+    private double income = Double.MIN_VALUE, avIncom = Double.MIN_VALUE, profit = 0.0, profitRate = 0.0;
     @Setter
     private PriceEntity currentKLine; // 当前交易日的k线
 
@@ -56,13 +51,11 @@ public class StockAccount {
     @Getter
     private int direction = 0;
 
-    public StockAccount(StockEntity stockEntity, StockPool pool, int investCode, int priority, TradeReportDto tradeReportDto) {
+    public StockAccount(StockEntity stockEntity, StockPool pool) {
         this.stockEntity = stockEntity;
         this.pool = pool;
-        this.investCode = investCode;
-        // 优先级
-        this.priority = priority;
-        this.tradeReportDto = tradeReportDto;
+
+        this.tradeReportDto = pool.getTradeReportDto();
         this.price = pool.getCash();
     }
 
@@ -94,17 +87,17 @@ public class StockAccount {
     // 更新收盘价，并计算市值
     public double update(LocalDate today) {
         this.today = today;
-        if(today.isEqual(this.ipo)){return 0.0;}
         if (null != this.currentKLine) {
             this.close = this.currentKLine.getClose();
         }
         // 2. 市值必须放在update中，因为清盘之前，balance会计算仓位信息
         this.amount = this.quantity * this.close;
+        // 设置
         long delta = ChronoUnit.DAYS.between(this.ipo, today);
         this.profit = this.amount - this.income;
-        this.avIncom = ((delta-1)*this.avIncom + this.income)/delta;
+        this.avIncom = (delta * this.avIncom + this.income) / (delta + 1);
         //  计算年化收益率
-        this.profitRate = Math.pow(1 + this.profit/this.avIncom, 365.0 / delta) - 1;
+        this.profitRate = Math.pow(1 + this.profit / this.avIncom, 365.0 / delta) - 1;
         return this.amount;
     }
 
@@ -130,13 +123,13 @@ public class StockAccount {
         // 5. 生成阈值
         this.threshold(shareCoefficient);
         // 股票清盘任务
-        if (this.priority == 0) {
+        if (0 == this.stockEntity.getPriority()) {
             this.tradeReportDto.clearing(
-                    date, stockEntity.getId(), stockEntity.getName(), this.investCode,
+                    date, stockEntity.getId(), stockEntity.getName(), this.stockEntity.getBalanceId(),
                     this.direction, this.amount, this.close, this.quantity,
                     this.hv, this.asymptote, this.putTrend, this.callTrend,
                     this.putRate, this.callRate, this.put, this.call,
-                    this.profit,this.profitRate);
+                    this.profit, this.profitRate);
         }
         // 最后一步，清理数据
         this.direction = 0; //交易方向清零

@@ -6,6 +6,7 @@ import com.stu.quantitative.entity.ExchangeEntity;
 import com.stu.quantitative.entity.PriceEntity;
 import com.stu.quantitative.entity.StockEntity;
 import com.stu.quantitative.service.domain.Alphavantage;
+import jakarta.annotation.PostConstruct;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,7 +33,12 @@ public class SyncService {
 
     private List<CodeConfigEntity> tokens;
 
-    @Scheduled(fixedDelay = 1000 * 60 * 3)
+    @PostConstruct
+    public void init() {
+        this.tokens = this.codeConfigService.findAllBySku("token");
+    }
+
+//    @Scheduled(fixedDelay = 1000 * 60 * 3)
     @Transactional
     @SneakyThrows
     public void sync() {
