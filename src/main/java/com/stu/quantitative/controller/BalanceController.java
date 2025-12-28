@@ -16,5 +16,8 @@ import java.util.List;
 @RestController()
 @RequestMapping("/balance")
 public class BalanceController {
-
+    @GetMapping("/find_by_plan/{planCode}")
+    public String backTrack(@PathVariable int planCode) {
+        return "success";
+    }
 }
