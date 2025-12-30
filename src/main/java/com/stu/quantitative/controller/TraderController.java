@@ -1,5 +1,6 @@
 package com.stu.quantitative.controller;
 
+import com.stu.quantitative.dto.BackTrackRequestDto;
 import com.stu.quantitative.service.TraderService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,8 +15,9 @@ public class TraderController {
     @Autowired
     private TraderService traderService;
 
-    @GetMapping("/back_track/{planCode}")
-    public void backTrack(@PathVariable int planCode) {
-         this.traderService.execute(planCode);
+    @PostMapping("/back_track")
+    public void backTrack(@RequestBody BackTrackRequestDto backTrackRequestDto) {
+        this.traderService.execute(backTrackRequestDto);
+        System.out.println(backTrackRequestDto);
     }
 }

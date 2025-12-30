@@ -19,4 +19,8 @@ public class StockService {
     public StockEntity findById(int id) {
         return this.stockRepository.findById(id).get();
     }
+
+    public List<StockEntity> findByBalanceId(int balanceId){
+        return this.stockRepository.findAllByBalanceId(balanceId);
+    }
 }

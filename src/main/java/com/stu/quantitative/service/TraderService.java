@@ -1,5 +1,6 @@
 package com.stu.quantitative.service;
 
+import com.stu.quantitative.dto.BackTrackRequestDto;
 import com.stu.quantitative.entity.*;
 import com.stu.quantitative.service.domain.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,12 +30,12 @@ public class TraderService {
     /**
      * 执行回测交易
      *
-     * @param planCode
+     * @param backTrackRequestDto
      */
-    public void execute(int planCode) {
+    public void execute(BackTrackRequestDto backTrackRequestDto) {
         List<StockEntity> stocks = this.stockService.findAll();
         List<TradedEntity> tradeds = this.tradedService.findAllByOrderByDate();
-        List<BalanceEntity> balances = this.balanceService.findAllByPlanCode(planCode);
+        List<BalanceEntity> balances = this.balanceService.findAllByPlanCode(backTrackRequestDto.planCode());
 
         // 生成stockPool
         StockPool pool = new StockPool(stocks, balances);
@@ -52,9 +53,7 @@ public class TraderService {
                 }
         ).toList();
 
-        Executor executor = new Executor(tradeds, balanceExecutors,pool);
+        Executor executor = new Executor(tradeds, balanceExecutors,pool, backTrackRequestDto);
         executor.execute();
     }
-
-
 }

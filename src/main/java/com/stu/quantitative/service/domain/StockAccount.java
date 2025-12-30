@@ -34,7 +34,7 @@ public class StockAccount {
     private double income = Double.MIN_VALUE, avIncom = Double.MIN_VALUE, profit = 0.0, profitRate = 0.0;
     @Setter
     private PriceEntity currentKLine; // 当前交易日的k线
-
+    private LocalDate ipo; // ipo日期
     private double price, close = 500000.00;// 交易价格,收盘价格
     private double hv = 1.0; // 当天的历史波动率
     // 渐进率：该参数的目的是为了控制买入仓位，防止初次买入过多
@@ -63,11 +63,6 @@ public class StockAccount {
         return null != this.currentKLine;
     }
 
-    @Setter
-    private LocalDate ipo; // ipo日期
-    // 当前日期,最近一次有交易的日期
-    private LocalDate today, exchangeDate;
-
     // 执行交易
     //direction：交易方向，1：买，-1：卖，price：交易价格，quantity：交易数量
     public void exchange(LocalDate date, int direction, double price, double quantity) {
@@ -86,9 +81,11 @@ public class StockAccount {
 
     // 更新收盘价，并计算市值
     public double update(LocalDate today) {
-        this.today = today;
         if (null == this.currentKLine) {
             return this.amount;
+        }
+        if (null == this.ipo) {
+            this.ipo = today;
         }
         this.close = this.currentKLine.getClose();
         // 2. 市值必须放在update中，因为清盘之前，balance会计算仓位信息

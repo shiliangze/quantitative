@@ -39,7 +39,7 @@ public class StockExecutor {
     public StockExecutor(StockAccount stockAccount,double balanceShare,
                          List<PriceEntity> klines, List<TradedEntity> tradeds) {
         this.stockAccount = stockAccount;
-        this.stockAccount.setIpo(klines.getFirst().getDate());
+//        this.stockAccount.setIpo(klines.getFirst().getDate());
         this.balanceShare = balanceShare;
         this.klines = klines;
         this.tradeds = tradeds;

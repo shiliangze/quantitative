@@ -2,6 +2,7 @@ package com.stu.quantitative.controller;
 
 import com.stu.quantitative.dto.ResponseDto;
 import com.stu.quantitative.dto.alphavantage.KLineRequestDto;
+import com.stu.quantitative.entity.BalanceEntity;
 import com.stu.quantitative.entity.PriceEntity;
 import com.stu.quantitative.service.BalanceService;
 import com.stu.quantitative.service.PriceService;
@@ -16,8 +17,11 @@ import java.util.List;
 @RestController()
 @RequestMapping("/balance")
 public class BalanceController {
+    @Autowired
+    private BalanceService balanceService;
+
     @GetMapping("/find_by_plan/{planCode}")
-    public String backTrack(@PathVariable int planCode) {
-        return "success";
+    public ResponseDto<List<BalanceEntity>> findAllByPlanCode(@PathVariable int planCode) {
+        return new ResponseDto<>(this.balanceService.findAllByPlanCode(planCode));
     }
 }

@@ -3,7 +3,6 @@ package com.stu.quantitative.service.domain;
 import lombok.Data;
 
 import java.time.LocalDate;
-import java.util.Comparator;
 import java.util.List;
 
 @Data
@@ -49,5 +48,4 @@ public class BalanceExecutor {
                 .takeWhile(it->it.backTradeExecute(this.balanceAccount.getAmount())==-2)
                 .findAny();
     }
-
 }

@@ -47,11 +47,9 @@ public class TradeReportDto {
                 profit, profitRate));
     }
 
-    public void report(LocalDate startDate, LocalDate middleDate, LocalDate endDate) {
-        System.out.printf("========历史交易：开始日期：%s========%n", startDate);
-        this.report(startDate, middleDate, true);
-        System.out.printf("========回测交易：开始日期：%s========%n", middleDate);
-        this.report(middleDate, endDate, true);
+    public void report(LocalDate startDate, LocalDate endDate) {
+        System.out.printf("========回测交易：开始日期：%s========%n", startDate);
+        this.report(startDate, endDate, true);
         System.out.printf("========终日清算日期：%s========%n", endDate);
         this.report(endDate, endDate.plusDays(1), false);
         System.out.printf("========结算信息========%n");

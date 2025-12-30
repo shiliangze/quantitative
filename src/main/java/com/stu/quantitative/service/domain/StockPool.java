@@ -71,8 +71,8 @@ public class StockPool {
         this.tradeReportDto.clearing(date,this.cash,this.amount,this.amount+this.cash);
     }
 
-    public void report(LocalDate startDate, LocalDate middleDate, LocalDate endDate){
-        this.tradeReportDto.report(startDate, middleDate, endDate);
+    public void report(LocalDate startDate, LocalDate endDate){
+        this.tradeReportDto.report(startDate, endDate);
     }
 }
 
