@@ -6,7 +6,7 @@ public record BackTrackStockDto(
         LocalDate date,
         int stockId,
         String stockName, // 股票代码
-        int investCode,
+        int balanceId,
         double amount, // 当前股票市值
         double close, // 收盘价格
         double quantity, // 仓位数量

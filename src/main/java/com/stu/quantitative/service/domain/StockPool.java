@@ -1,7 +1,7 @@
 package com.stu.quantitative.service.domain;
 
+import com.stu.quantitative.dto.BackTrackStockDto;
 import com.stu.quantitative.entity.BalanceEntity;
-import com.stu.quantitative.entity.CodeConfigEntity;
 import com.stu.quantitative.entity.StockEntity;
 import com.stu.quantitative.service.domain.report.TradeReportDto;
 import lombok.Getter;
@@ -9,8 +9,7 @@ import lombok.Getter;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.Objects;
 
 /**
  * 账户存储类
@@ -31,11 +30,12 @@ public class StockPool {
 
     // 初始资金
     @Getter
-    private double cash = 500000.00;
+    private double cash;
     // 当前总市值
     private double amount = 0.0;
 
-    public StockPool(List<StockEntity> stockEntities, List<BalanceEntity> balanceEntities) {
+    public StockPool(List<StockEntity> stockEntities, List<BalanceEntity> balanceEntities, double cash) {
+        this.cash = cash;
         this.stockAccounts = stockEntities.stream()
                 .map(stockEntity -> new StockAccount(stockEntity, this)).toList();
         this.balanceAccounts = balanceEntities.stream().map(balanceEntity ->
@@ -61,14 +61,17 @@ public class StockPool {
     }
 
     // 盘后清算
-    public void clearing(LocalDate date) {
+    public List<BackTrackStockDto> clearing(LocalDate date) {
         // 1.
         // 2. 计算总市值
-        this.amount = this.balanceAccounts.stream().mapToDouble(it -> it.update(date)).sum();
+        this.amount = this.balanceAccounts.stream().mapToDouble(BalanceAccount::update).sum();
         // 3. 每个balance盘后清算
-        this.balanceAccounts.forEach(it -> it.clearing(this.amount + this.cash, date));
+        List<BackTrackStockDto> backTrackStockDtos = this.balanceAccounts.stream()
+                .map(it -> it.clearing(this.amount + this.cash, date))
+                .filter(Objects::nonNull).flatMap(List::stream).toList();
         // report：总仓级别结算
         this.tradeReportDto.clearing(date,this.cash,this.amount,this.amount+this.cash);
+        return backTrackStockDtos;
     }
 
     public void report(LocalDate startDate, LocalDate endDate){

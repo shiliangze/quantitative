@@ -68,7 +68,7 @@ public class StockExecutor {
     public boolean tradeable(LocalDate date) {
         this.date = date;
         this.currentKLine = this.klines.stream().filter(it -> it.getDate().equals(date)).findFirst().orElse(null);
-        this.stockAccount.setCurrentKLine(this.currentKLine);
+        this.stockAccount.init(date,this.currentKLine);
         return null != this.currentKLine;
     }
 
@@ -89,7 +89,6 @@ public class StockExecutor {
         if (null != this.currentTraded) {
             //当日有交易，用交易加计算市值
             this.stockAccount.exchange(
-                    this.date,
                     this.currentTraded.getDirection(),
                     this.currentTraded.getPrice(),
                     this.currentTraded.getQuantity()
@@ -131,7 +130,7 @@ public class StockExecutor {
         // 交易数量：购买金额/交易价
         double quantity = callAmount / exchangePrice;
         // 执行交易记账
-        this.stockAccount.exchange(this.date,1, exchangePrice, quantity);
+        this.stockAccount.exchange(1, exchangePrice, quantity);
         return 1;
     }
 
@@ -147,7 +146,7 @@ public class StockExecutor {
         double putAmount = Math.max(balanceAmount / 5, this.stockAccount.getPool().getMinAmount());
         double quantity  = putAmount / exchangePrice;
         // 1.从资金池中加入买入金额
-        this.stockAccount.exchange(this.date,-1, exchangePrice, quantity);
+        this.stockAccount.exchange(-1, exchangePrice, quantity);
         return -1;
     }
 }

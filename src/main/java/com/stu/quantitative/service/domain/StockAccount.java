@@ -1,7 +1,9 @@
 package com.stu.quantitative.service.domain;
 
+import com.stu.quantitative.dto.BackTrackStockDto;
 import com.stu.quantitative.entity.PriceEntity;
 import com.stu.quantitative.entity.StockEntity;
+import com.stu.quantitative.entity.TradedEntity;
 import com.stu.quantitative.service.domain.report.TradeReportDto;
 import lombok.Getter;
 import lombok.Setter;
@@ -28,11 +30,10 @@ public class StockAccount {
     @Getter
     private double quantity = 0.0;
     // 持仓总市值，平均持仓市值
-//    @Getter
     private double amount = 0.0;
     // 现金转入
     private double income = Double.MIN_VALUE, avIncom = Double.MIN_VALUE, profit = 0.0, profitRate = 0.0;
-    @Setter
+    private LocalDate today;
     private PriceEntity currentKLine; // 当前交易日的k线
     private LocalDate ipo; // ipo日期
     private double price, close = 500000.00;// 交易价格,收盘价格
@@ -47,9 +48,10 @@ public class StockAccount {
     private double putRate = -1.00, callRate = -1.00;
     @Getter
     private double call = 500000.00, put = Double.MIN_VALUE;
-
     @Getter
     private int direction = 0;
+    private double tradeQuantity = 0.0;
+
 
     public StockAccount(StockEntity stockEntity, StockPool pool) {
         this.stockEntity = stockEntity;
@@ -59,19 +61,29 @@ public class StockAccount {
         this.price = pool.getCash();
     }
 
+    public void init(LocalDate date, PriceEntity priceEntity){
+        this.today = date;
+        this.currentKLine = priceEntity;
+        if(null == this.ipo && null!=this.currentKLine){
+            this.ipo = date;
+        }
+    }
+
     public boolean tradeable() {
         return null != this.currentKLine;
     }
 
     // 执行交易
     //direction：交易方向，1：买，-1：卖，price：交易价格，quantity：交易数量
-    public void exchange(LocalDate date, int direction, double price, double quantity) {
+    public void exchange( int direction, double price, double quantity) {
         this.direction = direction;
         this.price = price;
+
         // 1.从资金池中扣除买入金额
-        this.pool.exchange(date, this.stockEntity.getId(), this.stockEntity.getName(), direction, price, quantity);
+        this.pool.exchange(this.today, this.stockEntity.getId(), this.stockEntity.getName(), direction, price, quantity);
         // 2.增加响应持仓数量
         this.quantity += direction * quantity;
+        this.tradeQuantity += direction * quantity;
         this.income += direction * price * quantity;
         // 3. 更新渐进率
         if (1 == direction) {
@@ -80,18 +92,15 @@ public class StockAccount {
     }
 
     // 更新收盘价，并计算市值
-    public double update(LocalDate today) {
+    public double update() {
         if (null == this.currentKLine) {
             return this.amount;
-        }
-        if (null == this.ipo) {
-            this.ipo = today;
         }
         this.close = this.currentKLine.getClose();
         // 2. 市值必须放在update中，因为清盘之前，balance会计算仓位信息
         this.amount = this.quantity * this.close;
         // 设置
-        long delta = ChronoUnit.DAYS.between(this.ipo,today);
+        long delta = ChronoUnit.DAYS.between(this.ipo,this.today);
         this.profit = this.amount - this.income;
         this.avIncom = (delta * this.avIncom + this.income) / (delta + 1);
         //  计算年化收益率
@@ -103,14 +112,14 @@ public class StockAccount {
         return this.amount >= this.pool.getMinAmount();
     }
 
-    public void clearing(LocalDate date, double shareCoefficient, int direction) {
+    public BackTrackStockDto clearing( double shareCoefficient, int balanceDirection) {
         //  非交易日不做清算
-        if (!this.tradeable()) {
-            return;
+        if (null == this.currentKLine) {
+            return null;
         }
         //  如果balance发生了交易，并且当前股票未发生交易
         //  则balance更新所有股票的当前价，重新计算目标价格
-        if (0 != direction && 0 == this.direction) {
+        if (0 != balanceDirection && 0 == this.direction) {
             this.price = this.close;
         }
         // 1. 计算当前股票的历史波动率
@@ -123,14 +132,28 @@ public class StockAccount {
         // 股票清盘任务
         if (0 == this.stockEntity.getPriority()) {
             this.tradeReportDto.clearing(
-                    date, stockEntity.getId(), stockEntity.getName(), this.stockEntity.getBalanceId(),
+                    this.today, stockEntity.getId(), stockEntity.getName(), this.stockEntity.getBalanceId(),
                     this.direction, this.amount, this.close, this.quantity,
                     this.hv, this.asymptote, this.putTrend, this.callTrend,
                     this.putRate, this.callRate, this.put, this.call,
                     this.profit, this.profitRate);
         }
+        BackTrackStockDto backTrackStockDto = new BackTrackStockDto(
+                this.today,
+                this.stockEntity.getId(),
+                this.stockEntity.getName(),
+                this.stockEntity.getBalanceId(),
+                this.amount, this.close, this.quantity,
+                this.hv, this.asymptote,
+                this.putTrend, this.callTrend,
+                this.putRate, this.callRate,
+                this.put, this.call,
+                this.profit, this.profitRate,this.direction,
+                this.price, this.tradeQuantity);
         // 最后一步，清理数据
         this.direction = 0; //交易方向清零
+        this.tradeQuantity = 0.0;
+        return backTrackStockDto;
     }
 
     // 计算趋势因子

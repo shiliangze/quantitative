@@ -1,5 +1,6 @@
 package com.stu.quantitative.service.domain;
 
+import com.stu.quantitative.dto.BackTrackStockDto;
 import com.stu.quantitative.entity.BalanceEntity;
 import com.stu.quantitative.service.domain.report.TradeReportDto;
 import lombok.Getter;
@@ -7,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 
 @Slf4j
 public class BalanceAccount {
@@ -39,14 +41,14 @@ public class BalanceAccount {
     }
 
     // 计算balance市值
-    public double update(LocalDate today) {
-        this.amount = this.stockAccounts.stream().mapToDouble(it -> it.update(today)).sum();
+    public double update() {
+        this.amount = this.stockAccounts.stream().mapToDouble(StockAccount::update).sum();
         return amount;
     }
 
     // 平衡仓级别清盘
-    public void clearing(double totalAmount, LocalDate date) {
-        if(!this.tradeable()){return;}
+    public List<BackTrackStockDto> clearing(double totalAmount, LocalDate date) {
+        if(!this.tradeable()){return null;}
         // 计算仓位因子
         this.position = amount / totalAmount;
         this.shareOffset = (1.0001-this.position) / (this.balanceEntity.getShare() + 0.0001);
@@ -55,10 +57,12 @@ public class BalanceAccount {
                 .filter(it -> it.getDirection() == 1 || it.getDirection() == -1)
                 .findFirst().map(StockAccount::getDirection).orElse(0);
         // 盘后清算每个股票
-        this.stockAccounts.forEach(it->it.clearing(date,this.shareCoefficient,direction));
+        List<BackTrackStockDto> backTrackStockDtos = this.stockAccounts.stream()
+                .map(it->it.clearing(this.shareCoefficient,direction))
+                .filter(Objects::nonNull).toList();
         // 平衡仓清盘任务
         this.tradeReportDto.clearing(date, this.balanceEntity.getId(), this.balanceEntity.getName(),
                 this.amount, this.balanceEntity.getShare(), this.position, this.shareOffset, this.shareCoefficient);
-
+        return backTrackStockDtos;
     }
 }
