@@ -38,12 +38,12 @@ public class TradeReportDto {
             LocalDate date, int stockId, String stockName, int investCode,
             int direction, double amount, double close, double quantity,
             double hv, double asymptote, double putTrend, double callTrend,
-            double putRate, double callRate, double put, double call,
+            double price,double putRate, double callRate, double put, double call,
             double profit, double profitRate) {
 
         this.stockRecords.add(new StockRecord(
                 date, stockId, stockName, investCode, direction, amount, close, quantity, hv,
-                asymptote, putTrend, callTrend, putRate, callRate, put, call,
+                asymptote, putTrend, callTrend,price, putRate, callRate, put, call,
                 profit, profitRate));
     }
 

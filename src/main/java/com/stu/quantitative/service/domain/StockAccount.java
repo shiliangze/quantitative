@@ -77,7 +77,7 @@ public class StockAccount {
     //direction：交易方向，1：买，-1：卖，price：交易价格，quantity：交易数量
     public void exchange( int direction, double price, double quantity) {
         this.direction = direction;
-        this.price = price;
+//        this.price = price;
 
         // 1.从资金池中扣除买入金额
         this.pool.exchange(this.today, this.stockEntity.getId(), this.stockEntity.getName(), direction, price, quantity);
@@ -88,6 +88,10 @@ public class StockAccount {
         // 3. 更新渐进率
         if (1 == direction) {
             this.asymptote++;
+        }
+        // 如果正常买入卖出交易，则更新交易价格
+        if(-1 == direction || 1 == direction){
+            this.price = price;
         }
     }
 
@@ -117,9 +121,8 @@ public class StockAccount {
         if (null == this.currentKLine) {
             return null;
         }
-        //  如果balance发生了交易，并且当前股票未发生交易
-        //  则balance更新所有股票的当前价，重新计算目标价格
-        if (0 != balanceDirection && 0 == this.direction) {
+        //  balance有买卖交易，自动按照当日收盘价
+        if (1 == balanceDirection || -1 == balanceDirection  && 1 != this.direction && -1 != this.direction) {
             this.price = this.close;
         }
         // 1. 计算当前股票的历史波动率
@@ -135,7 +138,7 @@ public class StockAccount {
                     this.today, stockEntity.getId(), stockEntity.getName(), this.stockEntity.getBalanceId(),
                     this.direction, this.amount, this.close, this.quantity,
                     this.hv, this.asymptote, this.putTrend, this.callTrend,
-                    this.putRate, this.callRate, this.put, this.call,
+                    this.price,this.putRate, this.callRate, this.put, this.call,
                     this.profit, this.profitRate);
         }
         BackTrackStockDto backTrackStockDto = new BackTrackStockDto(
