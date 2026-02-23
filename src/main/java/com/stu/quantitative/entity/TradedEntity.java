@@ -29,9 +29,11 @@ public class TradedEntity {
     // 交易方向，1为买入，-1为卖出
     @Column
     private int direction;
+    @Column
+    private int feature; //买卖性质：0，普通买卖，1，红利再投资
     // 开盘价
     @Column
-    private double brokerage;
+    private double brokerage;  // 佣金
     // 交易日
     @Column
     private LocalDate date;

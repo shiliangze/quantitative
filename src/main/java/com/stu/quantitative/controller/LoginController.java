@@ -1,8 +1,8 @@
 package com.stu.quantitative.controller;
 
-import com.stu.quantitative.dto.LoginResponseDto;
-import com.stu.quantitative.dto.ResponseDto;
-import com.stu.quantitative.dto.UserInfoResponseDto;
+import com.stu.quantitative.service.dto.oauth.LoginResponseDto;
+import com.stu.quantitative.service.dto.ResponseDto;
+import com.stu.quantitative.service.dto.oauth.UserInfoResponseDto;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 

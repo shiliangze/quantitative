@@ -1,20 +1,17 @@
 package com.stu.quantitative.service;
 
-import com.stu.quantitative.dto.alphavantage.DailyPriceResponseDto;
+import com.stu.quantitative.dto.alphavantage.KlineResponseDto;
 import com.stu.quantitative.entity.CodeConfigEntity;
 import com.stu.quantitative.entity.ExchangeEntity;
-import com.stu.quantitative.entity.PriceEntity;
 import com.stu.quantitative.entity.StockEntity;
 import com.stu.quantitative.service.domain.Alphavantage;
 import jakarta.annotation.PostConstruct;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.util.List;
 
 @Slf4j
@@ -29,8 +26,6 @@ public class SyncService {
     @Autowired
     private ExchangeService exchangeService;
 
-    private int cursor = -1;
-
     private List<CodeConfigEntity> tokens;
 
     @PostConstruct
@@ -38,48 +33,25 @@ public class SyncService {
         this.tokens = this.codeConfigService.findAllBySku("token");
     }
 
-//    @Scheduled(fixedDelay = 1000 * 60 * 3)
-    @Transactional
-    @SneakyThrows
-    public void sync() {
-        StockEntity stock = this.nextStock();
-        PriceEntity price = this.priceService.findTopByStockIdOrderByDate(stock.getId()).orElse(null);
-        if (null == price || price.getDate().plusDays(100).isBefore(LocalDate.now())) {
-            // 超过100天，全量同步
-            String token = this.tokens.stream().filter(it -> it.getCode() == 0).findFirst().get().getValue();
-            ExchangeEntity exchange = this.exchangeService.findByCodeAndSource(stock.getExchange(), 0).orElse(null);
-            String ticker = null == exchange ? stock.getTicker() : String.format("%s.%s", stock.getTicker(), exchange.getValue());
-            // 超过100天，全量同步
-            DailyPriceResponseDto dailyPriceResponseDto = new Alphavantage(token, ticker).request(stock, "full");
-            log.info(dailyPriceResponseDto.toString());
+    public List<StockEntity> sync(int balanceId){
+        List<StockEntity> allStocks = this.stockService.findByBalanceId(balanceId);
+        String token = this.tokens.stream().filter(it -> it.getCode() == 0).findFirst().get().getValue();
+        allStocks.forEach(it->{
+            KlineResponseDto kLines = this.requestKLines(it,token);
             // k线信息入库
-            this.priceService.kLineSync(dailyPriceResponseDto, stock);
-        } else {
-            String token = this.tokens.stream().filter(it -> it.getCode() == 0).findFirst().get().getValue();
-            ExchangeEntity exchange = this.exchangeService.findByCodeAndSource(stock.getExchange(), 0).orElse(null);
-            String ticker = null == exchange ? stock.getTicker() : String.format("%s.%s", stock.getTicker(), exchange.getValue());
-            // 未超过100天，增量同步
-            DailyPriceResponseDto dailyPriceResponseDto = new Alphavantage(token, ticker).request(stock, "compact");
-            // k线信息入库
-            this.priceService.kLineSync(dailyPriceResponseDto, stock);
-        }
+            this.priceService.kLineSync(kLines.getKLineData(), it);
+        });
+        return allStocks;
     }
 
-    // 轮询最下一条stock
-    private StockEntity nextStock() {
-        List<StockEntity> allStocks = this.stockService.findAll();
-        if (this.cursor < 0) {
-            // 获取stock表的最后一条记录的id
-            int stockId = this.priceService.findTopByOrderByIdDesc()
-                    .map(PriceEntity::getStockId) // 如果Optional有值，返回priceEntity.getStockId()
-                    .orElse(-1); // 如果Optional为空，返回-1
-            log.info("获取的stockId: {}", stockId);
-            // 用stockId定位allStocks中cursor的位置
-            StockEntity entity = allStocks.stream().filter(s -> s.getId() == stockId).findFirst().orElse(null);
-            this.cursor = allStocks.indexOf(entity);    //如果不存在或查找失败，返回-1，下一步+1正好=0，从头开始
-        }
-        this.cursor = (this.cursor + 1) % allStocks.size();
-        log.info("计算的cursor值: {}", this.cursor);
-        return allStocks.get(this.cursor);
+    @Transactional
+    @SneakyThrows
+    private KlineResponseDto requestKLines(StockEntity stock, String token) {
+        // 获取交易所名称并拼接ticker
+        ExchangeEntity exchange = this.exchangeService.findByCodeAndSource(stock.getExchange(), 0).orElse(null);
+        String ticker = null == exchange ? stock.getTicker() : String.format("%s.%s", stock.getTicker(), exchange.getValue());
+        KlineResponseDto klines = new Alphavantage(token, ticker).request( );
+        Thread.sleep(10000L);
+        return klines;
     }
 }

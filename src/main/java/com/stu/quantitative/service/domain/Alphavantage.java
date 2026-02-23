@@ -1,9 +1,9 @@
 package com.stu.quantitative.service.domain;
 
-import com.stu.quantitative.dto.alphavantage.DailyPriceResponseDto;
-import com.stu.quantitative.entity.CodeConfigEntity;
-import com.stu.quantitative.entity.StockEntity;
+import com.stu.quantitative.dto.alphavantage.KlineResponseDto;
+import com.stu.quantitative.entity.PriceEntity;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.ExchangeStrategies;
@@ -39,13 +39,12 @@ public class Alphavantage {
                 .build();
     }
 
-    public DailyPriceResponseDto request(StockEntity stock,String outputsize) {
+    public KlineResponseDto request() {
         return this.webClient
                 .get() // GET 请求
                 .uri(uriBuilder -> uriBuilder
                         .queryParam("function", "TIME_SERIES_DAILY")
                         .queryParam("symbol", this.ticker)
-                        .queryParam("outputsize", outputsize)
                         .queryParam("apikey", token)
                         .build())
                 .retrieve()
@@ -56,7 +55,7 @@ public class Alphavantage {
                                     .flatMap(errorBody -> Mono.error(
                                             new RuntimeException("API请求失败: " + errorBody)));
                         })
-                .bodyToMono(DailyPriceResponseDto.class)
+                .bodyToMono(new ParameterizedTypeReference<KlineResponseDto>() {})
                 .block();
     }
 }

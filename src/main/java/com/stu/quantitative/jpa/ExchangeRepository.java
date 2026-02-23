@@ -11,5 +11,5 @@ import java.util.Optional;
 
 @Repository
 public interface ExchangeRepository extends JpaRepository<ExchangeEntity, Integer>, JpaSpecificationExecutor<ExchangeEntity> {
-        public Optional<ExchangeEntity> findByCodeAndSource(int code,int source);
+        Optional<ExchangeEntity> findByCodeAndSource(int code,int source);
 }

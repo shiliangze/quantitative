@@ -2,38 +2,28 @@ package com.stu.quantitative.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.Getter;
+import lombok.Data;
 import org.hibernate.annotations.SQLRestriction;
 
-@Getter
+@Data
 @Entity
-@Table(name = "balance") // 表名称
+@Table(name = "market") // 表名称
 @SQLRestriction("deleted = false")
-public class BalanceEntity {
+public class MarketEntity {
     // ID
     @Id
     @Column
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
-
+    // 关联外键: stock.id
     @Column
     private String name;
-
-    // 投资类型编号
     @Column
-    private int marketId;
-
-    // 预期仓位
+    private double cash;
     @Column
-    private double share;
-
-    // 备注
-    @Column
-    private String note;
-
+    private double boardLot;
     // 是否删除
     @JsonIgnore
     @Column
     private boolean deleted;
-
 }

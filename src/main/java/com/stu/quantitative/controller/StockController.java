@@ -1,7 +1,7 @@
 package com.stu.quantitative.controller;
 
 import com.stu.quantitative.dto.alphavantage.KLineRequestDto;
-import com.stu.quantitative.dto.ResponseDto;
+import com.stu.quantitative.service.dto.ResponseDto;
 import com.stu.quantitative.entity.PriceEntity;
 import com.stu.quantitative.service.PriceService;
 import com.stu.quantitative.service.StockService;

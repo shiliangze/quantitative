@@ -7,7 +7,7 @@ import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
 import java.util.HashMap;
 import java.util.Map;
 
-class TechnicalAnalysis {
+public class TechnicalAnalysis {
     private Map<Integer, CircularFifoQueue<Double>> history = new HashMap<Integer, CircularFifoQueue<Double>>() {{
         put(5, new CircularFifoQueue<Double>(5));
         put(10, new CircularFifoQueue<Double>(10));
@@ -15,7 +15,7 @@ class TechnicalAnalysis {
         put(30, new CircularFifoQueue<Double>(30));
         put(60, new CircularFifoQueue<Double>(60));
         put(120, new CircularFifoQueue<Double>(120));
-        put(250, new CircularFifoQueue<Double>(250));
+        put(252, new CircularFifoQueue<Double>(252));
     }};
 
     // 添加价格到历史记录

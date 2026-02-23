@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import org.hibernate.annotations.SQLRestriction;
 
+import java.time.LocalDate;
+
 @Getter
 @Entity
 @Table(name = "stock") // 表名称
@@ -34,6 +36,9 @@ public class StockEntity {
     // 交易所编码
     @Column
     private int exchange;
+
+    @Column
+    private LocalDate ipo;
 
     // 基金管理费率（万分之）
     @Column

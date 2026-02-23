@@ -10,47 +10,27 @@ import java.time.LocalDate;
 
 @Data
 @Entity
-@Table(name = "price") // 表名称
+@Table(name = "indicator") // 表名称
 @SQLRestriction("deleted = false")
-public class PriceEntity {
-    @JsonIgnore
+public class IndicatorEntity {
     // ID
     @Id
     @Column
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
     // 关联外键: stock.id
-    @JsonIgnore
     @Column
     private int stockId;
+    @Column
+    private double price;
+    @Column
+    private int code;
     // 是否删除
-    @JsonIgnore
     @Column
     private boolean deleted;
-    // 开盘价
-    @JsonProperty("1. open")
-    @Column
-    private double open;
-    // 开盘价
-    @JsonProperty("2. high")
-    @Column
-    private double high;
-    // 开盘价
-    @JsonProperty("3. low")
-    @Column
-    private double low;
-    // 成交量
-    @JsonProperty("5. volume")
-    @Column
-    private long volume;
-    // 收盘价
-    @JsonProperty("4. close")
-    @Column
-    private double close;
     // 交易日
-    @JsonIgnore
     @Column
     private LocalDate date;
-    public PriceEntity() {
+    public IndicatorEntity() {
     }
 }
